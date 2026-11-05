@@ -36,26 +36,26 @@ namespace CommunityHelpers.EditorTools
         // ---- Button construction ----
         private const float BaseDepth = 0.010f, FaceDepth = 0.010f, FaceInset = 0.004f;
 
-        private struct Helper
+        internal struct Helper
         {
             public Color32 Color; public string Kit, Model; public float Yaw;
             public Helper(Color32 c, string kit, string model, float yaw) { Color = c; Kit = kit; Model = model; Yaw = yaw; }
         }
 
         // Placeholder helper icons: a colored chip with a tiny 3D model. Teammates will replace these with card art.
-        private static readonly Helper Fire     = new(UIColors.Coral,    KenneyKit.Car,       "firetruck",          115f);
-        private static readonly Helper Doctor   = new(UIColors.Teal,     KenneyKit.Car,       "ambulance",          115f);
-        private static readonly Helper Librarian= new(UIColors.Violet,   KenneyKit.Furniture, "books",              200f);
-        private static readonly Helper Police   = new(UIColors.Sky,      KenneyKit.Car,       "police",             115f);
-        private static readonly Helper Teacher  = new(UIColors.Sun,      KenneyKit.Furniture, "desk",               200f);
-        private static readonly Helper Mail     = new(UIColors.TryAgain, KenneyKit.Furniture, "cardboardBoxClosed", 210f);
+        internal static readonly Helper Fire     = new(UIColors.Coral,    KenneyKit.Car,       "firetruck",          115f);
+        internal static readonly Helper Doctor   = new(UIColors.Teal,     KenneyKit.Car,       "ambulance",          115f);
+        internal static readonly Helper Librarian= new(UIColors.Violet,   KenneyKit.Furniture, "books",              200f);
+        internal static readonly Helper Police   = new(UIColors.Sky,      KenneyKit.Car,       "police",             115f);
+        internal static readonly Helper Teacher  = new(UIColors.Sun,      KenneyKit.Furniture, "desk",               200f);
+        internal static readonly Helper Mail     = new(UIColors.TryAgain, KenneyKit.Furniture, "cardboardBoxClosed", 210f);
 
         /// <summary>Yaw (degrees) that turns something at tablePos to face the player's seat.</summary>
         public static float YawTowardSeat(Vector3 tablePos, float tableCenterZ) =>
             Mathf.Atan2(tablePos.x, tablePos.z + tableCenterZ) * Mathf.Rad2Deg;
 
         /// <param name="tableCenterZ">How far in front of the seat the table's center is (the seat is at z = -tableCenterZ in table space).</param>
-        public static void Build(Transform table, float tableCenterZ)
+        public static MainMenuController Build(Transform table, float tableCenterZ)
         {
             var semi = FontSetup.Load(FontSetup.FredokaSemiBold);
             var bold = FontSetup.Load(FontSetup.FredokaBold);
@@ -123,6 +123,7 @@ namespace CommunityHelpers.EditorTools
             cso.FindProperty("howToPlayButton").objectReferenceValue = howTo;
             cso.FindProperty("settingsButton").objectReferenceValue = settings;
             cso.ApplyModifiedPropertiesWithoutUndo();
+            return controller;
         }
 
         // ------------------------------------------------------------------ Button
@@ -242,10 +243,15 @@ namespace CommunityHelpers.EditorTools
                 Chip(row, helpers[i], new Vector2(x0 + i * spacing, 0));
         }
 
-        private static void Chip(Transform row, Helper h, Vector2 pos)
+        /// <summary>
+        /// A helper chip: colored disc with a cream rim and a tiny 3D model. Board size is 3.3 cm across;
+        /// scale multiplies everything (the title sign uses big ones). Returns the model so callers can animate it.
+        /// </summary>
+        internal static Transform Chip(Transform row, Helper h, Vector2 pos, float scale = 1f)
         {
             const float r = 0.0165f;
             var chip = Group($"Chip_{h.Model}", row, new Vector3(pos.x, pos.y, 0));
+            chip.localScale = Vector3.one * scale;
             Cyl("Rim", chip, new Vector3(0, 0, -0.001f), r + 0.0015f, 0.002f, Mat("Cream", UIColors.Cream), new Vector3(90, 0, 0));
             Cyl("Disc", chip, new Vector3(0, 0, -0.0025f), r, 0.003f, Mat("Chip_" + h.Model, h.Color), new Vector3(90, 0, 0));
 
@@ -256,6 +262,7 @@ namespace CommunityHelpers.EditorTools
             model.localScale = Vector3.one * s;
             var b = KenneyKit.LocalBounds(holder);
             model.localPosition -= new Vector3(b.center.x, b.center.y, b.max.z);
+            return model;
         }
 
         // ------------------------------------------------------------------ Easel

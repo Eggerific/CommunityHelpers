@@ -20,6 +20,10 @@ namespace CommunityHelpers
         [SerializeField] private KidButton3D howToPlayButton;
         [SerializeField] private KidButton3D settingsButton;
 
+        [Header("Reactions (step 3)")]
+        [SerializeField] private RoboController robo;
+        [SerializeField] private TitleSignAnimator titleSign;
+
         private IEnumerator Start()
         {
             if (board == null) yield break;
@@ -45,10 +49,29 @@ namespace CommunityHelpers
         }
 
         // Hooked up to the buttons' onPressed by the scene builder.
-        public void OnPlay() => Debug.Log("[MainMenu] Play (6 helpers). Who are you today? comes in step 4.");
-        public void OnQuickPlay() => Debug.Log("[MainMenu] Quick play (3 helpers). Who are you today? comes in step 4.");
-        public void OnHowToPlay() => Debug.Log("[MainMenu] How to play. Tutorial scene comes in step 4.");
-        public void OnSettings() => Debug.Log("[MainMenu] Settings. Settings panel comes in step 4.");
+        public void OnPlay()
+        {
+            Debug.Log("[MainMenu] Play (6 helpers). Who are you today? comes in step 4.");
+            if (robo) robo.DoCheer(RoboController.Cheer.Jump);
+        }
+
+        public void OnQuickPlay()
+        {
+            Debug.Log("[MainMenu] Quick play (3 helpers). Who are you today? comes in step 4.");
+            if (robo) robo.DoCheer(RoboController.Cheer.Jump);
+        }
+
+        public void OnHowToPlay()
+        {
+            Debug.Log("[MainMenu] How to play. Tutorial scene comes in step 4.");
+            if (robo) robo.DoCheer(RoboController.Cheer.Yes);
+        }
+
+        public void OnSettings()
+        {
+            Debug.Log("[MainMenu] Settings. Settings panel comes in step 4.");
+            if (robo) robo.DoCheer(RoboController.Cheer.ThumbsUp);
+        }
 
 #if UNITY_EDITOR
         private void Update()
