@@ -51,3 +51,6 @@ crashlytics-build.properties
 # OS files
 .DS_Store
 Thumbs.db
+
+# Raw asset downloads (zips); extracted models live in Assets/_Project/ThirdParty
+/_Downloads/
