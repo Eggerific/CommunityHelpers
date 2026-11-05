@@ -26,15 +26,15 @@ namespace CommunityHelpers.EditorTools
             { "Locomot", "Teleport", "Turner", "ControllerSlide", "ControllerStep", "Tunneling" };
 
         // ---- Layout (meters, relative to the seat: x right, y up from floor, z forward) ----
-        private static readonly Vector2 TableSize = new(1.8f, 1.1f); // width (x) by depth (z), square corners
-        private const float TableCenterZ = 0.80f;   // near edge 0.25 m in front of the player
-        private const float BackWallZ = 3.0f;
-        private const float SideWallX = 2.8f;
-        private const float BehindWallZ = -2.2f;
-        private const float WallHeight = 3.0f;
-        private const float WainscotHeight = 0.95f;
-        private static readonly Vector2 WindowX = new(-2.3f, 2.3f);
-        private static readonly Vector2 WindowY = new(0.75f, 2.35f);
+        internal static readonly Vector2 TableSize = new(1.8f, 1.1f); // width (x) by depth (z), square corners
+        internal const float TableCenterZ = 0.80f;   // near edge 0.25 m in front of the player
+        internal const float BackWallZ = 3.0f;
+        internal const float SideWallX = 2.8f;
+        internal const float BehindWallZ = -2.2f;
+        internal const float WallHeight = 3.0f;
+        internal const float WainscotHeight = 0.95f;
+        internal static readonly Vector2 WindowX = new(-2.3f, 2.3f);
+        internal static readonly Vector2 WindowY = new(0.75f, 2.35f);
         private const float SillLift = 0.02f; // sill top sits just above the wall's opening edge (avoids z-fighting)
 
         [MenuItem("Community Helpers/Build Main Menu Scene", priority = 0)]
@@ -64,8 +64,15 @@ namespace CommunityHelpers.EditorTools
             BuildHelperTown(world);
             BuildClassroomProps(world);
             var table = BuildTable(world);
-            BuildPlaceholders(table);
-            MenuBoardBuilder.Build(table, TableCenterZ);
+            var menu = MenuBoardBuilder.Build(table, TableCenterZ);
+            var robo = BuildRobo(table);
+            var titleSign = TitleSignBuilder.Build(world);
+
+            // Robo cheers and the sign throws confetti when buttons are pressed.
+            var mso = new SerializedObject(menu);
+            mso.FindProperty("robo").objectReferenceValue = robo;
+            mso.FindProperty("titleSign").objectReferenceValue = titleSign;
+            mso.ApplyModifiedPropertiesWithoutUndo();
 
             var so = new SerializedObject(anchor);
             so.FindProperty("head").objectReferenceValue = head;
@@ -199,6 +206,9 @@ namespace CommunityHelpers.EditorTools
 
             Box("Floor", room, new Vector3(0, -0.05f, (BackWallZ + BehindWallZ) * 0.5f),
                 new Vector3(SideWallX * 2, 0.1f, BackWallZ - BehindWallZ), floor);
+            // Ceiling (the title sign and bunting hang from it).
+            Box("Ceiling", room, new Vector3(0, WallHeight + 0.05f, (BackWallZ + BehindWallZ) * 0.5f),
+                new Vector3(SideWallX * 2 + 0.2f, 0.1f, BackWallZ - BehindWallZ + 0.2f), Mat("Ceiling", new Color32(0xFB, 0xF5, 0xEA, 255)));
 
             // Side and back (behind the player) walls: lower teal band, cream above, wood trim between.
             WallStrip("Wall_Left", room, new Vector3(-SideWallX, 0, (BackWallZ + BehindWallZ) * 0.5f),
@@ -259,7 +269,9 @@ namespace CommunityHelpers.EditorTools
         }
 
         // Street outside the window (meters from the seat, z forward).
-        private const float SidewalkNearZ = 8.2f, StreetNearZ = 9.0f, StreetFarZ = 11.0f, BuildingFrontZ = 12.4f;
+        // Street is 3.2 m wide: a driving lane (traffic, right to left) and a parking lane (helper vehicles).
+        private const float SidewalkNearZ = 8.1f, StreetNearZ = 8.9f, StreetFarZ = 12.1f, BuildingFrontZ = 13.4f;
+        private const float DrivingLaneZ = 9.7f, ParkingLaneZ = 11.3f;
 
         private static void BuildHelperTown(Transform world)
         {
@@ -340,7 +352,7 @@ namespace CommunityHelpers.EditorTools
 
                 // The helper's vehicle parked along the far curb, in front of its building.
                 if (p.Vehicle != null)
-                    KenneyKit.Place(KenneyKit.Car, p.Vehicle, town, new Vector3(cx, 0.02f, StreetFarZ - 0.9f), 90f + (i % 2) * 180f);
+                    KenneyKit.Place(KenneyKit.Car, p.Vehicle, town, new Vector3(cx, 0.02f, ParkingLaneZ), 90f + (i % 2) * 180f);
 
                 // Bushes either side of the entrance.
                 KenneyKit.Place(KenneyKit.Nature, "plant_bushLarge", town, new Vector3(cx - size.x * 0.5f + 0.3f, 0.06f, BuildingFrontZ - 0.35f), 0f, 0.8f);
@@ -383,6 +395,69 @@ namespace CommunityHelpers.EditorTools
             int t = 0;
             for (float x = -36f; x <= 36f; x += 9f, t++)
                 KenneyKit.Place(KenneyKit.Commercial, towers[t % towers.Length], town, new Vector3(x + (t % 2) * 2f, 0f, BuildingFrontZ + 30f + (t % 3) * 4f), 180f, 1.4f);
+
+            BuildTraffic(town);
+            BuildPlane(town);
+        }
+
+        // ------------------------------------------------------------------ Moving life outside the window
+
+        /// <summary>A small pool of cars that StreetTraffic sends along the driving lane, right to left.</summary>
+        private static void BuildTraffic(Transform town)
+        {
+            var traffic = Group("Traffic", town, new Vector3(0, 0.02f, DrivingLaneZ));
+            string[] models = { "sedan", "taxi", "suv", "van", "hatchback-sports", "truck" };
+            var cars = new List<Transform>();
+            foreach (var m in models)
+            {
+                // yaw 90: checked in the headset, this points the car's front to -X (the direction it drives).
+                var car = KenneyKit.Place(KenneyKit.Car, m, traffic, Vector3.zero, 90f, name: "Car_" + m);
+                car.gameObject.SetActive(false);
+                cars.Add(car);
+            }
+            var tr = traffic.gameObject.AddComponent<StreetTraffic>();
+            var so = new SerializedObject(tr);
+            var arr = so.FindProperty("cars");
+            arr.arraySize = cars.Count;
+            for (int i = 0; i < cars.Count; i++) arr.GetArrayElementAtIndex(i).objectReferenceValue = cars[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>A cute propeller plane that PlaneFlyby flies back and forth across the sky behind the town.</summary>
+        private static void BuildPlane(Transform town)
+        {
+            // Between the back-row houses (z ~25-31, under 6 m tall) and the skyline (front ~41 m), above everything.
+            // The loop's far pass is 6 m farther (z ~35), still well in front of the towers.
+            var sky = Group("SkyLife", town, new Vector3(0, 10f, BuildingFrontZ + 16f));
+            var plane = Group("Plane", sky);
+            plane.localScale = Vector3.one * 1.4f;
+
+            var white = Mat("PlaneBody", new Color32(0xFA, 0xFA, 0xF5, 255), 0.4f);
+            var coral = Mat("Coral", UIColors.Coral);
+            var sun = Mat("Sun", UIColors.Sun, 0.4f);
+            var glass = Mat("PlaneWindow", UIColors.Sky, 0.7f);
+
+            // Nose points +X. Wings span Z. PlaneFlyby turns the plane to face its direction of travel.
+            Prim(PrimitiveType.Capsule, "Fuselage", plane, Vector3.zero, new Vector3(0.7f, 1.6f, 0.7f), white, new Vector3(0, 0, 90));
+            Box("Wing", plane, new Vector3(0.2f, -0.08f, 0), new Vector3(0.9f, 0.08f, 3.8f), coral);
+            Box("TailFin", plane, new Vector3(-1.35f, 0.45f, 0), new Vector3(0.6f, 0.75f, 0.07f), coral);
+            Box("TailWing", plane, new Vector3(-1.4f, 0.12f, 0), new Vector3(0.5f, 0.06f, 1.5f), coral);
+            for (int i = 0; i < 3; i++)
+            {
+                // Windows on both sides: the player sees one side going right and the other coming back.
+                Sphere("Window", plane, new Vector3(0.75f - i * 0.42f, 0.1f, -0.31f), new Vector3(0.24f, 0.24f, 0.08f), glass);
+                Sphere("Window", plane, new Vector3(0.75f - i * 0.42f, 0.1f, 0.31f), new Vector3(0.24f, 0.24f, 0.08f), glass);
+            }
+            Sphere("Hub", plane, new Vector3(1.62f, 0, 0), Vector3.one * 0.26f, sun);
+            var prop = Group("Propeller", plane, new Vector3(1.68f, 0, 0));
+            Box("BladeA", prop, Vector3.zero, new Vector3(0.05f, 1.3f, 0.12f), Mat("Ink", UIColors.Ink));
+            Box("BladeB", prop, Vector3.zero, new Vector3(0.05f, 0.12f, 1.3f), Mat("Ink", UIColors.Ink));
+
+            var fly = sky.gameObject.AddComponent<PlaneFlyby>();
+            var so = new SerializedObject(fly);
+            so.FindProperty("plane").objectReferenceValue = plane;
+            so.FindProperty("propeller").objectReferenceValue = prop;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // ------------------------------------------------------------------ Classroom props
@@ -458,17 +533,14 @@ namespace CommunityHelpers.EditorTools
 
         // ------------------------------------------------------------------ Step 1 placeholders
 
-        private static void BuildPlaceholders(Transform table)
+        /// <summary>
+        /// Robo stands right of the menu board (the board is off-center to the left), closer to the player than
+        /// the board, turned to face the seat. Built from parts by RoboBuilder.
+        /// </summary>
+        private static RoboController BuildRobo(Transform table)
         {
-            var fredoka = FontSetup.Load(FontSetup.FredokaSemiBold);
-
-            // The menu board is built by MenuBoardBuilder (step 2).
-            // Where Robo will stand (step 3): right of the menu board (the board is off-center to the left),
-            // closer to the player than the board, turned to face the seat.
             var roboPos = new Vector3(0.4f, 0, -0.28f);
-            var robo = Group("Placeholder_Robo", table, roboPos, new Vector3(0, MenuBoardBuilder.YawTowardSeat(roboPos, TableCenterZ), 0));
-            Prim(PrimitiveType.Capsule, "Body", robo, new Vector3(0, 0.125f, 0), new Vector3(0.14f, 0.125f, 0.14f), Mat("Mist", UIColors.Mist));
-            Text3D("Label", robo, "Robo", fredoka, 0.035f, UIColors.Ink, new Vector3(0, 0.29f, 0), new Vector2(0.2f, 0.05f));
+            return RoboBuilder.Build(table, roboPos, MenuBoardBuilder.YawTowardSeat(roboPos, TableCenterZ));
         }
 
         // ------------------------------------------------------------------ Build settings

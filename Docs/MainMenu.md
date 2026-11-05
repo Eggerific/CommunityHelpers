@@ -78,10 +78,46 @@ Each step ends with a **headset check-in** before the next one starts.
 
 **Check-in:** Can you reach every button with the ray? Can you poke them by leaning in? Is the board the right size and distance? Are the hover glow, press and buzz noticeable? Are the helper chips readable?
 
-### Step 3: Robo and the title sign ⏳ next
+### Step 3: Robo and the title sign 🔨 in progress (branch `Main-Menu-Step-3`)
 
-- Robo built from simple 3D shapes, standing on the table to the right of the board. Idle bob, wave on start, point at Play when idle.
-- A big "Community Helpers" title sign over the window.
+- **Robo:** our own robot, built from rounded parts by `Editor/RoboBuilder.cs` (no outside model). No free download matched "light gray, big eyes, separate movable parts", so we built one.
+  - About 36 cm tall, standing on the table right of the board and closer to the player, facing the seat.
+  - Light gray shell and a dark face screen with **big white eyes** (blink, and pupils follow the player). It also has a smile, rosy cheeks, blue ear bolts, an antenna with a yellow ball, and a glowing heart on its chest.
+  - **Separate parts**, each on its own pivot: body, head, left arm, right arm, antenna, both eyes and both pupils. `RoboController` animates them all in code:
+
+    | Motion | What moves |
+    |---|---|
+    | Idle | bob and sway, arm swing, antenna wobble, heart pulse, head turning toward the player |
+    | Wave | hello right after the board pops in, then again now and then (every 10–18 s, Wave or Yes) |
+    | Jump | hop with squash and stretch, both arms up |
+    | Yes | head nods |
+    | Thumbs up | arm forward, head tilt |
+    | Surprised | eyes pop bigger for a moment |
+    | Picked up ("Wheee!") | eyes go wide, mouth becomes an open "O", arms wave in the air, antenna wiggles fast |
+
+  - **Pick Robo up:** point a controller at Robo (or reach it) and squeeze the **grip** button. Meta Interaction SDK `Grabbable` + `HandGrabInteractable` + `DistanceHandGrabInteractable` (the rig grabs with hand-grab interactors for both hands and controllers) let kids grab it from the seat, with a pinch/trigger or a grip/whole-hand grab. When you let go, Robo flies back to its spot with a little hop and a happy nod.
+
+  - It cheers when buttons are pressed:
+
+    | Button | Robo does |
+    |---|---|
+    | Play / Quick play | Jump |
+    | How to play | Yes |
+    | Settings | Thumbs up |
+
+    Each cheer also shows a quick "surprised" face.
+- **Title sign:** a hanging marquee banner (2.46 × 0.58 m) in front of the top of the window, tilted down toward the seat.
+  - Chunky yellow letters ("Community Helpers") with an ink outline and stacked depth layers so they look 3D. The letters bounce in a wave.
+  - Marquee bulbs chase around a wide coral border. The stars sit outside the border so they never cover the bulbs.
+  - Twinkling stars, and a gentle sway from its ropes.
+  - A **confetti** burst once, when the menu loads (not on button presses).
+- **Party bunting** in the helper colors along the front and side walls, and a ceiling for everything to hang from.
+- **Life outside the window:**
+  - A cute propeller plane flies back and forth across the sky nonstop (`PlaneFlyby`): left to right on a near pass, a banked U-turn, right to left on a slightly farther pass, and around again. The straight passes cross the whole window; the U-turns happen past the ends of the view, and the flight path (10 m up, between the back-row houses and the skyline) clears every building.
+  - Cars (sedan, taxi, SUV, van, sports car, truck) drive slowly right to left along the street at random intervals (`StreetTraffic`; 3–9 s apart, never closer than 7 m).
+  - The street was widened to 3.2 m (a driving lane plus a parking lane for the helper vehicles), so the buildings sit about 1 m further back.
+
+**Check-in:** Is Robo visible and the right size? Does it face you? Do its animations play (idle, wave, cheers)? Is the sign readable from the seat without craning your neck? Is it exciting without being too busy? Is the confetti fun, or too much?
 
 ### Step 4: Menu flow ⏳
 
@@ -106,15 +142,17 @@ MainMenu
 ├─ OVRCameraRig                       Meta camera rig (OVRManager: floor-level tracking)
 │  └─ OVRComprehensiveInteractionRig  controller ray + poke (locomotion children disabled)
 └─ World                              SeatAnchor moves this to the player at start
-   ├─ Room                            walls, floor, window frame
+   ├─ Room                            walls, floor, ceiling, window frame
    ├─ HelperTown                      street, buildings, signs, vehicles, trees, skyline
    ├─ ClassroomProps                  Kenney furniture
+   ├─ TitleSign                       TitleSignAnimator; ropes, Swing/Sign (border, bulbs, letters, stars), Confetti
+   ├─ Bunting                         flag strings on the front and side walls
    └─ Table                           SeatAnchor sets its height
       ├─ MenuBoard                    MainMenuController (pop-in, button actions)
       │  ├─ Board                     frame, panel, ledge (tilted 25°)
       │  │  └─ Panel_Main             Btn_Play, Btn_QuickPlay, Btn_HowToPlay, Btn_Settings
       │  └─ BackLeg / FrontFoot ×2
-      └─ Placeholder_Robo             replaced in step 3
+      └─ Robo                         RoboController; Rig/Body (Torso, Arm_L, Arm_R, Head (Eyes, Pupils, Antenna))
 ```
 
 Each button:
@@ -140,7 +178,13 @@ Btn_<Name>       KidButton3D, PokeInteractable, RayInteractable
 | Classroom props | `Editor/MainMenuSceneBuilder.cs` → `BuildClassroomProps` | |
 | A Kenney kit shows up backwards | `Editor/KenneyKit.cs` | `FrontYaw` (0 or 180) |
 | Board position, tilt, size | `Editor/MenuBoardBuilder.cs` | `BoardCenter` (x = offset from center; negative is left), `BoardTilt`, `PanelSize` (buttons scale with it), `ContentFill` (how much of the panel the buttons use) |
-| Robo's spot | `Editor/MainMenuSceneBuilder.cs` → `BuildPlaceholders` | `roboPos` |
+| Robo's spot | `Editor/MainMenuSceneBuilder.cs` → `BuildRobo` | `roboPos` |
+| Robo's look (size, parts, colors) | `Editor/RoboBuilder.cs`, `Scripts/UIColors.cs` | `RigScale`; `RoboShell`, `RoboJoint`, `RoboEye` |
+| Robo's behavior (greet, fidget, blink, how much it looks at you) | `RoboController` on **Robo** (Inspector) | `greetDelay`, `fidgetEvery`, `blinkEvery`, `headFollow` |
+| Title sign size, height, tilt, text | `Editor/TitleSignBuilder.cs` | `HangY`, `BorderSize`, `TiltTowardPlayer`, `Title`, `TitleEm` |
+| Sign animation (bounce, bulbs, spin, sway, confetti timing) | `TitleSignAnimator` on **TitleSign** (Inspector) | |
+| Plane speed, height, loop size (`halfWidth` = where it turns around) | `PlaneFlyby` on **HelperTown/SkyLife** (Inspector); height in `BuildPlane` | `speed`, `halfWidth`, `turnRadius`, `bankDegrees` |
+| Traffic speed, how often cars come, which cars | `StreetTraffic` on **HelperTown/Traffic** (Inspector); car list in `BuildTraffic` | `speed`, `secondsBetweenCars`, `minGap` |
 | Button layout, labels, icons, helper chips | `Editor/MenuBoardBuilder.cs` → `Build` | |
 | Button feel (press depth, glow, buzz, debounce) | `KidButton3D` (Inspector, or defaults in `Scripts/Menu/KidButton3D.cs`) | |
 | Colors | `Scripts/UIColors.cs` | |

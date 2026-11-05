@@ -29,6 +29,11 @@ namespace CommunityHelpers
         public static readonly Color32 CardWorkplace = new(0x7C, 0x6B, 0xC4, 255);
         public static readonly Color32 CardAI        = new(0x5B, 0x6B, 0x82, 255);
 
+        // Robo
+        public static readonly Color32 RoboShell  = new(0xDC, 0xE1, 0xE8, 255); // light gray body and head
+        public static readonly Color32 RoboJoint  = new(0x9B, 0xA4, 0xB4, 255); // neck, legs, shoulders, hands
+        public static readonly Color32 RoboEye    = new(0xFB, 0xFC, 0xFF, 255); // eye whites (glow on the dark screen)
+
         // Room / environment
         public static readonly Color32 WallUpper  = new(0xF6, 0xEB, 0xDA, 255);
         public static readonly Color32 WallLower  = new(0x9F, 0xC6, 0xB6, 255);
