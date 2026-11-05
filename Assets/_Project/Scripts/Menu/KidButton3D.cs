@@ -63,6 +63,13 @@ namespace CommunityHelpers
         public bool IsHovered => _hovering.Count > 0;
         public bool IsPressed => _selecting.Count > 0;
 
+        /// <summary>Picked (e.g. the chosen animal): the glow stays on and the button stays a little bigger.</summary>
+        public bool Selected { get; private set; }
+        public void SetSelected(bool selected) => Selected = selected;
+
+        /// <summary>Change the face color at runtime (e.g. a toggle switching On/Off).</summary>
+        public void SetFaceColor(Color c) => faceColor = c;
+
         private void Awake()
         {
             _mpb = new MaterialPropertyBlock();
@@ -141,12 +148,13 @@ namespace CommunityHelpers
         {
             float k = 1f - Mathf.Exp(-animSpeed * Time.unscaledDeltaTime);
             _pressAmount = Mathf.Lerp(_pressAmount, IsPressed ? 1f : 0f, k);
-            _hoverAmount = Mathf.Lerp(_hoverAmount, IsHovered && interactable ? 1f : 0f, k);
+            _hoverAmount = Mathf.Lerp(_hoverAmount, (IsHovered || Selected) && interactable ? 1f : 0f, k);
 
             if (face != null)
             {
                 face.localPosition = _faceRestPos + Vector3.forward * (pressDepth * _pressAmount);
-                face.localScale = _faceRestScale * Mathf.Lerp(1f, hoverScale, _hoverAmount);
+                float grow = Selected ? Mathf.Max(hoverScale, 1.08f) : hoverScale;
+                face.localScale = _faceRestScale * Mathf.Lerp(1f, grow, _hoverAmount);
             }
             if (glow != null)
             {

@@ -55,27 +55,43 @@ namespace CommunityHelpers.EditorTools
             Mathf.Atan2(tablePos.x, tablePos.z + tableCenterZ) * Mathf.Rad2Deg;
 
         /// <param name="tableCenterZ">How far in front of the seat the table's center is (the seat is at z = -tableCenterZ in table space).</param>
-        public static MainMenuController Build(Transform table, float tableCenterZ)
+        /// <summary>
+        /// The wooden easel on the table: root (pops in at start) -> Board (tilted, turned toward the seat)
+        /// with frame, cream panel, chalk ledge and legs. Panels go on the board via <see cref="NewPanel"/>.
+        /// </summary>
+        internal static Transform BuildEasel(Transform table, float tableCenterZ, string name, out Transform board)
         {
-            var semi = FontSetup.Load(FontSetup.FredokaSemiBold);
-            var bold = FontSetup.Load(FontSetup.FredokaBold);
             var wood = Mat("WoodDark", UIColors.WoodDark);
-
-            // Root (pops in at start) -> Board (tilted, turned toward the seat) -> Panel_Main.
-            var root = Group("MenuBoard", table);
-            var controller = root.gameObject.AddComponent<MainMenuController>();
-
+            var root = Group(name, table);
             float yaw = YawTowardSeat(BoardCenter, tableCenterZ);
-            var board = Group("Board", root, BoardCenter, new Vector3(BoardTilt, yaw, 0));
+            board = Group("Board", root, BoardCenter, new Vector3(BoardTilt, yaw, 0));
             MeshKit.Show("Frame", board, MeshKit.RoundedSlab("Board_Frame", FrameSize.x, FrameSize.y, FrameDepth, 0.045f), wood);
             MeshKit.Show("Panel", board, MeshKit.RoundedSlab("Board_Panel", PanelSize.x, PanelSize.y, PanelDepth, 0.03f),
                 Mat("Cream", UIColors.Cream), new Vector3(0, 0, -FrameDepth));
             // Chalk-ledge along the bottom edge.
             Box("Ledge", board, new Vector3(0, -FrameSize.y * 0.5f - 0.004f, -0.03f), new Vector3(FrameSize.x - 0.04f, 0.014f, 0.05f), wood);
             BuildEaselLegs(root, board, wood);
+            return root;
+        }
 
-            var panel = Group("Panel_Main", board, new Vector3(0, 0, -FrameDepth - PanelDepth));
-            panel.localScale = Vector3.one * LayoutScale; // everything below is in DesignPanel units
+        /// <summary>A panel on the board's face. Everything inside is laid out in DesignPanel units (0.62 x 0.42).</summary>
+        internal static Transform NewPanel(string name, Transform board)
+        {
+            var panel = Group(name, board, new Vector3(0, 0, -FrameDepth - PanelDepth));
+            panel.localScale = Vector3.one * LayoutScale;
+            return panel;
+        }
+
+        internal static Vector2 Design => DesignPanel;
+
+        public static MainMenuController Build(Transform table, float tableCenterZ)
+        {
+            var semi = FontSetup.Load(FontSetup.FredokaSemiBold);
+            var bold = FontSetup.Load(FontSetup.FredokaBold);
+
+            var root = BuildEasel(table, tableCenterZ, "MenuBoard", out var board);
+            var controller = root.gameObject.AddComponent<MainMenuController>();
+            var panel = NewPanel("Panel_Main", board);
 
             // Layout (panel center = 0,0; design panel is 0.62 x 0.42). Top to bottom: Play, Quick play, then How to play | Settings.
             // Vertical: 3.5 cm top margin, Play 11, gap 3, Quick 9, gap 3, small row 8, 4.5 cm bottom margin.
@@ -122,7 +138,11 @@ namespace CommunityHelpers.EditorTools
             cso.FindProperty("quickPlayButton").objectReferenceValue = quick;
             cso.FindProperty("howToPlayButton").objectReferenceValue = howTo;
             cso.FindProperty("settingsButton").objectReferenceValue = settings;
+            cso.FindProperty("panelMain").objectReferenceValue = panel;
             cso.ApplyModifiedPropertiesWithoutUndo();
+
+            // Step 4: the other screens on the same board (hidden until opened).
+            MenuPanelsBuilder.Build(board, controller);
             return controller;
         }
 
@@ -132,7 +152,7 @@ namespace CommunityHelpers.EditorTools
         /// Builds a 3D button: dark base, colored face (moves on press), hover glow, and a Meta ISDK surface
         /// that both the controller ray and poke can press. "content" is where labels and icons go (on the face).
         /// </summary>
-        private static KidButton3D MakeButton(string name, Transform parent, Vector2 center, Vector2 size, Color32 color,
+        internal static KidButton3D MakeButton(string name, Transform parent, Vector2 center, Vector2 size, Color32 color,
             out Transform content)
         {
             var root = Group(name, parent, new Vector3(center.x, center.y, 0));
@@ -205,14 +225,15 @@ namespace CommunityHelpers.EditorTools
 
         // ------------------------------------------------------------------ Content
 
-        private static void Label(Transform content, string text, TMPro.TMP_FontAsset font, float em, Color32 color, Vector2 pos, float width)
+        internal static TMPro.TextMeshPro Label(Transform content, string text, TMPro.TMP_FontAsset font, float em, Color32 color, Vector2 pos, float width)
         {
             var t = Text3D("Label_" + text, content, text, font, em, color, new Vector3(pos.x, pos.y, -0.0005f), new Vector2(width, em * 1.4f));
             t.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+            return t;
         }
 
         /// <summary>Extruded flat icon: the polygon is multiplied by scale (meters per unit).</summary>
-        private static void Icon(string name, Transform content, Vector2[] unitPolygon, float height, Color32 color, Vector2 pos)
+        internal static void Icon(string name, Transform content, Vector2[] unitPolygon, float height, Color32 color, Vector2 pos)
         {
             var pts = new Vector2[unitPolygon.Length];
             for (int i = 0; i < pts.Length; i++) pts[i] = unitPolygon[i] * height;
@@ -220,7 +241,7 @@ namespace CommunityHelpers.EditorTools
                 new Vector3(pos.x, pos.y, 0));
         }
 
-        private static void Gear(Transform content, Vector2 pos, float radius, Color32 color)
+        internal static void Gear(Transform content, Vector2 pos, float radius, Color32 color)
         {
             var g = Group("GearIcon", content, new Vector3(pos.x, pos.y, 0));
             var mat = Mat("Icon_" + ColorUtility.ToHtmlStringRGB(color), color);
@@ -235,7 +256,7 @@ namespace CommunityHelpers.EditorTools
         }
 
         /// <summary>Row of helper chips centered at pos.</summary>
-        private static void ChipRow(Transform content, Helper[] helpers, Vector2 pos, float spacing)
+        internal static void ChipRow(Transform content, Helper[] helpers, Vector2 pos, float spacing)
         {
             var row = Group("HelperChips", content, new Vector3(pos.x, pos.y, 0));
             float x0 = -spacing * (helpers.Length - 1) * 0.5f;

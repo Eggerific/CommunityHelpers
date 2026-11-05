@@ -9,12 +9,12 @@ This doc covers how the scene is built, the five build steps and where each one 
 ## Quick start
 
 1. Open the project in Unity 6 (6000.3.22f1).
-2. Run **Community Helpers → Build Main Menu Scene**.
+2. Run **Community Helpers → Build All Scenes**.
    - The first run may ask to import **TMP Essential Resources**. Accept, then run it again.
-   - It creates `Assets/Scenes/MainMenu.unity` and makes it scene 0 in Build Settings.
+   - It creates `Assets/Scenes/MainMenu.unity` (scene 0) and `Assets/Scenes/Game.unity` (scene 1, placeholder) and sets Build Settings.
 3. Press Play over Quest Link, or build to the headset, and sit down.
 
-> **Don't hand-edit `MainMenu.unity`.** The builder recreates the scene from code each time, so manual changes are lost on the next build. Change the builder scripts in `Assets/_Project/Editor/` instead (see [Where to change things](#where-to-change-things)).
+> **Don't hand-edit `MainMenu.unity` or `Game.unity`.** The builder recreates the scene from code each time, so manual changes are lost on the next build. Change the builder scripts in `Assets/_Project/Editor/` instead (see [Where to change things](#where-to-change-things)).
 
 ---
 
@@ -48,7 +48,7 @@ Each step ends with a **headset check-in** before the next one starts.
 
 **Check-in:** Is the table at a good height? Is the town visible through the window? Do the controller rays show? Is teleport/turning gone?
 
-### Step 2: Menu board and 3D buttons 🔨 in progress (branch `Main-Menu-Step-2`)
+### Step 2: Menu board and 3D buttons ✅ merged (PR #2)
 
 - A wooden easel board on the table (0.80 × 0.56 m, tilted back 25°): a rounded frame, a cream panel, a chalk ledge, and legs down to the table. It pops in (scale 0.9 → 1.0) 0.6 s after the scene starts.
 - **Layout on the table:** the board sits 20 cm left of center. Robo stands to the right and closer to the player (about 0.65 m away). Both are turned to face the seat, so the middle of the window stays open for the view outside. The table is 1.8 × 1.1 m.
@@ -78,7 +78,7 @@ Each step ends with a **headset check-in** before the next one starts.
 
 **Check-in:** Can you reach every button with the ray? Can you poke them by leaning in? Is the board the right size and distance? Are the hover glow, press and buzz noticeable? Are the helper chips readable?
 
-### Step 3: Robo and the title sign 🔨 in progress (branch `Main-Menu-Step-3`)
+### Step 3: Robo and the title sign ✅ merged (PR #3)
 
 - **Robo:** our own robot, built from rounded parts by `Editor/RoboBuilder.cs` (no outside model). No free download matched "light gray, big eyes, separate movable parts", so we built one.
   - About 36 cm tall, standing on the table right of the board and closer to the player, facing the seat.
@@ -119,16 +119,48 @@ Each step ends with a **headset check-in** before the next one starts.
 
 **Check-in:** Is Robo visible and the right size? Does it face you? Do its animations play (idle, wave, cheers)? Is the sign readable from the seat without craning your neck? Is it exciting without being too busy? Is the confetti fun, or too much?
 
-### Step 4: Menu flow ⏳
+### Step 4: Navigation and flow 🔨 in progress (branch `Main-Menu-Step-4`)
 
-- **Who are you today?** panel after Play / Quick play: pick Fox, Bear, Owl or Bunny, then **Let's go!** (disabled until an animal is picked).
-- **Settings** panel: volume, left-handed, tutorial first, Back, Quit.
-- Panel swaps (0.25 s fade out, 0.25 s fade in, input blocked during the fade), saved settings (PlayerPrefs), and loading the Game or Tutorial scene with the chosen mode and animal.
+```
+Main ──Play / Quick play──▶ Who are you today? ──Let's go!──▶ Game scene (placeholder)
+ │ ▲                               │                               │
+ │ └───────────── Back ────────────┘◀──────── Back to menu ────────┘
+ ├──How to play──▶ How to play (placeholder) ──Back──▶ Main
+ └──Settings────▶ Settings ──Back──▶ Main      (Quit closes the app)
+```
+
+- **Panels on one easel:** all menu screens live on the same board. Opening one shrinks the current panel out and pops the new one in (about 0.35 s, buttons blocked meanwhile). The board itself never moves. Every sub-panel has a Back button that returns to Main.
+- **Play / Quick play** set the mode (Full = 6 helpers, Quick = 3) and open **Who are you today?**
+  - Four animal buttons (Fox, Bear, Owl, Bunny) with simple 3D faces (`Editor/AnimalFaces.cs`, placeholders for real art).
+  - The picked animal stays glowing and slightly bigger, and Robo nods.
+  - **Let's go!** is grayed out until an animal is picked. It fades the screen and loads the **Game** scene.
+- **Game scene (placeholder):** one scene for both modes. `GameSession` carries the mode and animal.
+  - Same room, town and Robo, with a confetti burst on load.
+  - The easel only says **"Play"** or **"Quick play"** and "This is where the game will be played, on the table", plus **Back to menu**.
+  - The real game will be played on the table. The team replaces this board when it's ready.
+- **Settings:**
+  - Volume − / + with 5 dots (applied with `AudioListener.volume`, saved in PlayerPrefs by `GameSettings`).
+  - **Re-center view:** puts the table, menu and Robo back in front of the player (for when a kid shifts in the seat or turns around). Robo waves.
+  - A grown-ups note, **Back**, and **Quit**.
+- **How to play (placeholder):** three picture cards ("Ask for a helper card", "Match helpers with their things", "Most matches wins!") and Back. The pictures are plain card shapes and a star.
+  - When a real tutorial exists, point this button at a Tutorial scene instead.
+- **Helper icons appear only on the main menu** (the Play and Quick play buttons), because the final helper art isn't decided yet.
+- **Screen fades:** `ScreenFader` (a cream quad in front of the camera) fades in when a scene starts and out before loading the next. There's no camera motion.
+- **Build:** **Community Helpers → Build All Scenes** builds `MainMenu` (scene 0) and `Game` (scene 1) and sets Build Settings.
+- **Editor shortcuts (Play mode):**
+
+  | Key | Does |
+  |---|---|
+  | 1–4 | Main buttons |
+  | F / B / O / N | Pick Fox / Bear / Owl / Bunny |
+  | Enter | Let's go! |
+  | Backspace | Back (or Back to menu in the Game scene) |
+
+**Check-in:** Does every button go to the right place, and does Back always return to Main? Is the animal picker easy for kids (big enough, clear which one is picked)? Do the fades feel comfortable? Do settings stick after restarting?
 
 ### Step 5: Polish ⏳
 
 - Idle hint: after 20 s, the Play button pulses and Robo points.
-- Fade from black on start.
 - Performance pass (72 FPS, draw calls).
 - Trim the Kenney kits to the models we actually use.
 
@@ -185,11 +217,18 @@ Btn_<Name>       KidButton3D, PokeInteractable, RayInteractable
 | Sign animation (bounce, bulbs, spin, sway, confetti timing) | `TitleSignAnimator` on **TitleSign** (Inspector) | |
 | Plane speed, height, loop size (`halfWidth` = where it turns around) | `PlaneFlyby` on **HelperTown/SkyLife** (Inspector); height in `BuildPlane` | `speed`, `halfWidth`, `turnRadius`, `bankDegrees` |
 | Traffic speed, how often cars come, which cars | `StreetTraffic` on **HelperTown/Traffic** (Inspector); car list in `BuildTraffic` | `speed`, `secondsBetweenCars`, `minGap` |
+| Menu flow (what each button opens, Back behavior, scene names) | `Scripts/Menu/MainMenuController.cs` | `OnPlay`, `OnLetsGo`, `gameScene` |
+| Animal picker, Settings and How to play panels (layout, labels) | `Editor/MenuPanelsBuilder.cs` | |
+| Animal faces | `Editor/AnimalFaces.cs` | |
+| Saved settings (volume) | `Scripts/GameSettings.cs` | |
+| What carries into the game (mode, animal) | `Scripts/GameSession.cs` | |
+| Placeholder Game scene board | `Editor/GameBoardBuilder.cs`, `Scripts/Menu/GameSceneController.cs` | |
+| Fade color and timing | `ScreenFader` on **CenterEyeAnchor/ScreenFader** (Inspector); color in `AddScreenFader` | `fadeInOnStart`, `fadeOut` || Animal picker, Settings and How to play panels (layout, labels) | `Editor/MenuPanelsBuilder.cs` | || Animal faces | `Editor/AnimalFaces.cs` | || Saved settings (volume) | `Scripts/GameSettings.cs` | || What carries into the game (mode, animal) | `Scripts/GameSession.cs` | || Placeholder Game scene board | `Editor/GameBoardBuilder.cs`, `Scripts/Menu/GameSceneController.cs` | || Fade color and timing | `ScreenFader` on **CenterEyeAnchor/ScreenFader** (Inspector); color in `AddScreenFader` | `fadeInOnStart`, `fadeOut` |
 | Button layout, labels, icons, helper chips | `Editor/MenuBoardBuilder.cs` → `Build` | |
 | Button feel (press depth, glow, buzz, debounce) | `KidButton3D` (Inspector, or defaults in `Scripts/Menu/KidButton3D.cs`) | |
 | Colors | `Scripts/UIColors.cs` | |
 
-After changing a builder script, run **Community Helpers → Build Main Menu Scene** again.
+After changing a builder script, run **Community Helpers → Build All Scenes** again.
 
 ---
 

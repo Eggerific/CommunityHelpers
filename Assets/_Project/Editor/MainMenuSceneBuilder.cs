@@ -37,55 +37,129 @@ namespace CommunityHelpers.EditorTools
         internal static readonly Vector2 WindowY = new(0.75f, 2.35f);
         private const float SillLift = 0.02f; // sill top sits just above the wall's opening edge (avoids z-fighting)
 
-        [MenuItem("Community Helpers/Build Main Menu Scene", priority = 0)]
+        public const string GameScenePath = "Assets/Scenes/Game.unity";
+
+        [MenuItem("Community Helpers/Build All Scenes", priority = 0)]
+        public static void BuildAll()
+        {
+            if (!Prepare("Rebuild all scenes", $"This replaces {ScenePath} and {GameScenePath} with fresh builds.")) return;
+            BuildMenuScene();
+            BuildGameScene();
+            EditorSceneManager.OpenScene(ScenePath);
+        }
+
+        [MenuItem("Community Helpers/Build Main Menu Scene", priority = 1)]
         public static void Build()
         {
-            if (!FontSetup.EnsureTmpEssentials()) return;
-            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-            if (System.IO.File.Exists(ScenePath) &&
-                !EditorUtility.DisplayDialog("Rebuild Main Menu",
-                    $"This replaces {ScenePath} with a fresh build. Continue?", "Rebuild", "Cancel"))
-                return;
+            if (!Prepare("Rebuild Main Menu", $"This replaces {ScenePath} with a fresh build.")) return;
+            BuildMenuScene();
+        }
 
+        [MenuItem("Community Helpers/Build Game Scene (placeholder)", priority = 2)]
+        public static void BuildGame()
+        {
+            if (!Prepare("Rebuild Game scene", $"This replaces {GameScenePath} with a fresh build.")) return;
+            BuildGameScene();
+        }
+
+        /// <summary>Checks, confirmation and one-time setup shared by every build.</summary>
+        private static bool Prepare(string title, string message)
+        {
+            if (!FontSetup.EnsureTmpEssentials()) return false;
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return false;
+            if (!EditorUtility.DisplayDialog(title, message + " Continue?", "Rebuild", "Cancel")) return false;
             FontSetup.CreateAll(force: false);
             KenneyImportSettings.EnsureApplied();
-            ClearCache();
-            KenneyKit.ClearCache();
+            return true;
+        }
 
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        private static void BuildMenuScene()
+        {
+            var scene = NewSceneWithWorld(out var rig, out var world, out var table, out var robo, out var titleSign);
 
-            SetupLighting();
-            var rig = SpawnRig(out var head, out var trackingSpace);
-
-            var world = new GameObject("World").transform;
-            var anchor = world.gameObject.AddComponent<SeatAnchor>();
-
-            BuildRoom(world);
-            BuildHelperTown(world);
-            BuildClassroomProps(world);
-            var table = BuildTable(world);
             var menu = MenuBoardBuilder.Build(table, TableCenterZ);
-            var robo = BuildRobo(table);
-            var titleSign = TitleSignBuilder.Build(world);
-
-            // Robo cheers and the sign throws confetti when buttons are pressed.
             var mso = new SerializedObject(menu);
             mso.FindProperty("robo").objectReferenceValue = robo;
             mso.FindProperty("titleSign").objectReferenceValue = titleSign;
             mso.ApplyModifiedPropertiesWithoutUndo();
+
+            // Confetti belongs to the game starting, not the menu.
+            var tso = new SerializedObject(titleSign);
+            tso.FindProperty("confettiAtStart").floatValue = -1f;
+            tso.ApplyModifiedPropertiesWithoutUndo();
+
+            Save(scene, ScenePath, rig);
+        }
+
+        private static void BuildGameScene()
+        {
+            var scene = NewSceneWithWorld(out var rig, out var world, out var table, out var robo, out _);
+            GameBoardBuilder.Build(table, TableCenterZ, robo);
+            Save(scene, GameScenePath, rig); // the title sign pops confetti when the game loads
+        }
+
+        /// <summary>
+        /// Everything both scenes share: lighting, the XR rig (with screen fader), the room, Helper Town, props,
+        /// table, Robo and the title sign, all under a World that SeatAnchor places around the player.
+        /// </summary>
+        private static UnityEngine.SceneManagement.Scene NewSceneWithWorld(out GameObject rig, out Transform world,
+            out Transform table, out RoboController robo, out TitleSignAnimator titleSign)
+        {
+            ClearCache();
+            KenneyKit.ClearCache();
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            SetupLighting();
+            rig = SpawnRig(out var head, out var trackingSpace);
+            AddScreenFader(head);
+
+            world = new GameObject("World").transform;
+            var anchor = world.gameObject.AddComponent<SeatAnchor>();
+            BuildRoom(world);
+            BuildHelperTown(world);
+            BuildClassroomProps(world);
+            table = BuildTable(world);
+            robo = BuildRobo(table);
+            titleSign = TitleSignBuilder.Build(world);
 
             var so = new SerializedObject(anchor);
             so.FindProperty("head").objectReferenceValue = head;
             so.FindProperty("trackingSpace").objectReferenceValue = trackingSpace;
             so.FindProperty("table").objectReferenceValue = table;
             so.ApplyModifiedPropertiesWithoutUndo();
+            return scene;
+        }
 
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            AddToBuildSettingsFirst(ScenePath);
+        private static void Save(UnityEngine.SceneManagement.Scene scene, string path, GameObject rig)
+        {
+            EditorSceneManager.SaveScene(scene, path);
+            UpdateBuildSettings();
             AssetDatabase.SaveAssets();
-
             Selection.activeObject = rig;
-            Debug.Log("[MainMenuSceneBuilder] Built " + ScenePath);
+            Debug.Log("[MainMenuSceneBuilder] Built " + path);
+        }
+
+        /// <summary>Soft cream fade quad just in front of the headset camera (see ScreenFader).</summary>
+        private static void AddScreenFader(Transform head)
+        {
+            if (head == null) return;
+            EnsureFolder(MaterialDir);
+            string path = $"{MaterialDir}/M_ScreenFade.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Sprites/Default"));
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            mat.color = UIColors.Cream;
+            mat.renderQueue = 4000; // overlay: drawn after everything else
+            EditorUtility.SetDirty(mat);
+
+            var quad = Prim(PrimitiveType.Quad, "ScreenFader", head, new Vector3(0, 0, 0.1f), new Vector3(1.2f, 1.2f, 1f), mat);
+            var fader = quad.AddComponent<ScreenFader>();
+            var so = new SerializedObject(fader);
+            so.FindProperty("quad").objectReferenceValue = quad.GetComponent<Renderer>();
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // ------------------------------------------------------------------ Rig
@@ -545,10 +619,12 @@ namespace CommunityHelpers.EditorTools
 
         // ------------------------------------------------------------------ Build settings
 
-        private static void AddToBuildSettingsFirst(string path)
+        /// <summary>MainMenu is scene 0 (the app starts there), Game is scene 1, then anything else already listed.</summary>
+        private static void UpdateBuildSettings()
         {
-            var scenes = EditorBuildSettings.scenes.Where(s => s.path != path).ToList();
-            scenes.Insert(0, new EditorBuildSettingsScene(path, true));
+            var ordered = new[] { ScenePath, GameScenePath }.Where(System.IO.File.Exists).ToList();
+            var scenes = ordered.Select(p => new EditorBuildSettingsScene(p, true)).ToList();
+            scenes.AddRange(EditorBuildSettings.scenes.Where(s => !ordered.Contains(s.path)));
             EditorBuildSettings.scenes = scenes.ToArray();
         }
     }
