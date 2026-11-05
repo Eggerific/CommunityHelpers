@@ -26,8 +26,8 @@ namespace CommunityHelpers.EditorTools
             { "Locomot", "Teleport", "Turner", "ControllerSlide", "ControllerStep", "Tunneling" };
 
         // ---- Layout (meters, relative to the seat: x right, y up from floor, z forward) ----
-        private static readonly Vector2 TableSize = new(1.3f, 1.0f); // width (x) by depth (z), square corners
-        private const float TableCenterZ = 0.75f;   // near edge 0.25 m in front of the player
+        private static readonly Vector2 TableSize = new(1.8f, 1.1f); // width (x) by depth (z), square corners
+        private const float TableCenterZ = 0.80f;   // near edge 0.25 m in front of the player
         private const float BackWallZ = 3.0f;
         private const float SideWallX = 2.8f;
         private const float BehindWallZ = -2.2f;
@@ -65,6 +65,7 @@ namespace CommunityHelpers.EditorTools
             BuildClassroomProps(world);
             var table = BuildTable(world);
             BuildPlaceholders(table);
+            MenuBoardBuilder.Build(table, TableCenterZ);
 
             var so = new SerializedObject(anchor);
             so.FindProperty("head").objectReferenceValue = head;
@@ -406,10 +407,10 @@ namespace CommunityHelpers.EditorTools
             KenneyKit.Place(F, "lampRoundFloor", props, new Vector3(leftWall + 0.3f, 0, -1.2f), 90f);
             KenneyKit.Place(F, "coatRackStanding", props, new Vector3(leftWall + 0.35f, 0, -1.85f), 0f);
 
-            // Right wall: low bookcase with the teddy bear and a plant, then the teacher's desk by the window.
+            // Right wall: low bookcase with books and a plant, then the teacher's desk by the window.
+            // (The Kenney teddy bear read as a lion in the headset, so it was removed.)
             var low = KenneyKit.Place(F, "bookcaseOpenLow", props, Vector3.zero, -90f, out var lowSize);
             low.localPosition = new Vector3(rightWall - lowSize.z * 0.5f, 0, 0.4f);
-            KenneyKit.Place(F, "bear", props, low.localPosition + new Vector3(0, lowSize.y, 0.15f), -120f);
             KenneyKit.Place(F, "books", props, low.localPosition + new Vector3(0, lowSize.y, -0.3f), -80f);
             KenneyKit.Place(F, "pottedPlant", props, new Vector3(rightWall - 0.3f, 0, -0.6f), 0f);
             KenneyKit.Place(F, "trashcan", props, new Vector3(rightWall - 0.25f, 0, 1.4f), 0f);
@@ -429,7 +430,7 @@ namespace CommunityHelpers.EditorTools
                 KenneyKit.Place(F, small[i], props, new Vector3(sillX[i], sillTop, sillZ), i * 60f);
 
             // Rug under the table and two empty kid chairs at the table ends.
-            KenneyKit.Place(F, "rugRectangle", props, new Vector3(0, 0.002f, TableCenterZ), 0f, 0.8f);
+            KenneyKit.Place(F, "rugRectangle", props, new Vector3(0, 0.002f, TableCenterZ), 0f, 1.05f);
             KenneyKit.Place(F, "chairRounded", props, new Vector3(-TableSize.x * 0.5f - 0.3f, 0, TableCenterZ), 90f);
             KenneyKit.Place(F, "chairRounded", props, new Vector3(TableSize.x * 0.5f + 0.3f, 0, TableCenterZ), -90f);
         }
@@ -460,21 +461,12 @@ namespace CommunityHelpers.EditorTools
         private static void BuildPlaceholders(Transform table)
         {
             var fredoka = FontSetup.Load(FontSetup.FredokaSemiBold);
-            var andika = FontSetup.Load(FontSetup.AndikaRegular);
 
-            // Where the menu board will stand (step 2). About 0.7 m from the eyes, tilted back like a music stand.
-            // Positive X rotation tips the top away from the player.
-            var board = Group("Placeholder_MenuBoard", table, new Vector3(0, 0.2f, -0.2f), new Vector3(25f, 0, 0));
-            Box("Frame", board, Vector3.zero, new Vector3(0.48f, 0.33f, 0.03f), Mat("WoodDark", UIColors.WoodDark));
-            Box("Face", board, new Vector3(0, 0, -0.016f), new Vector3(0.44f, 0.29f, 0.005f), Mat("Cream", UIColors.Cream));
-            Text3D("Title", board, "Menu board", fredoka, 0.05f, UIColors.Ink, new Vector3(0, 0.05f, -0.02f), new Vector2(0.42f, 0.08f));
-            Text3D("Note", board, "Step 2 builds the real board and 3D buttons here.", andika, 0.022f, UIColors.Muted,
-                new Vector3(0, -0.04f, -0.02f), new Vector2(0.38f, 0.08f));
-            // Simple stand under the board, resting on the table.
-            Box("Stand", table, new Vector3(0, 0.025f, -0.22f), new Vector3(0.3f, 0.05f, 0.16f), Mat("WoodDark", UIColors.WoodDark));
-
-            // Where Robo will stand (step 3). Turned to face the player's seat.
-            var robo = Group("Placeholder_Robo", table, new Vector3(0.36f, 0, 0.02f), new Vector3(0, 24f, 0));
+            // The menu board is built by MenuBoardBuilder (step 2).
+            // Where Robo will stand (step 3): right of the menu board (the board is off-center to the left),
+            // closer to the player than the board, turned to face the seat.
+            var roboPos = new Vector3(0.4f, 0, -0.28f);
+            var robo = Group("Placeholder_Robo", table, roboPos, new Vector3(0, MenuBoardBuilder.YawTowardSeat(roboPos, TableCenterZ), 0));
             Prim(PrimitiveType.Capsule, "Body", robo, new Vector3(0, 0.125f, 0), new Vector3(0.14f, 0.125f, 0.14f), Mat("Mist", UIColors.Mist));
             Text3D("Label", robo, "Robo", fredoka, 0.035f, UIColors.Ink, new Vector3(0, 0.29f, 0), new Vector2(0.2f, 0.05f));
         }
