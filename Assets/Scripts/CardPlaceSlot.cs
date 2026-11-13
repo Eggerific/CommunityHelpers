@@ -30,16 +30,15 @@ public class CardPlaceSlot : MonoBehaviour
         if (other.CompareTag("Card"))
         {
             //cardCandidate = other.gameObject;
-            other.gameObject.GetComponent<CardScript>().slotPull = this;
+            other.gameObject.GetComponent<CardScript>().SetPull(this);
         }
     }
     private void OnTriggerExit(Collider other)
     {
-        Debug.Log("Bye!");
         if (other.CompareTag("Card"))
         {
             //cardCandidate = null;
-            other.gameObject.GetComponent<CardScript>().slotPull = null;
+            other.gameObject.GetComponent<CardScript>().ResetPull();
         }
     }
 }
