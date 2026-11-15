@@ -95,6 +95,7 @@ namespace CommunityHelpers.EditorTools
         {
             var scene = NewSceneWithWorld(out var rig, out var world, out var table, out var robo, out _);
             GameBoardBuilder.Build(table, TableCenterZ, robo);
+            GameTableBuilder.Apply(table); // card designs in front of the player, Robo moved back
             Save(scene, GameScenePath, rig); // the title sign pops confetti when the game loads
         }
 
