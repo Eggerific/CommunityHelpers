@@ -121,6 +121,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardScript
   slotPull: {fileID: 0}
+  cardCategory: Doctor/Tool
   returnHomeDrop: 1
 --- !u!1 &3021056697979548941
 GameObject:

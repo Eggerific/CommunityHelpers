@@ -121,6 +121,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardScript
   slotPull: {fileID: 0}
+  cardCategory: Teacher/Helper
   returnHomeDrop: 1
 --- !u!1 &6342510482833441175
 GameObject:

@@ -216,6 +216,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardScript
   slotPull: {fileID: 0}
+  cardCategory: MailCarrier/Helper
   returnHomeDrop: 1
 --- !u!1001 &6682755519010321730
 PrefabInstance:

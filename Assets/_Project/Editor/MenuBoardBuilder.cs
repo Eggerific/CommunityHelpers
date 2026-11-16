@@ -116,7 +116,8 @@ namespace CommunityHelpers.EditorTools
                     new Vector2(-0.2f, -1f), new Vector2(0.5f, 0.15f), new Vector2(0.05f, 0.15f),
                 }, 0.02f, UIColors.Sun, new Vector2(-0.215f, 0f)); // outline spans -1..1, so 4 cm tall
             Label(quickContent, "Quick play", semi, 0.04f, UIColors.Cream, new Vector2(-0.06f, 0f), 0.26f);
-            ChipRow(quickContent, new[] { Fire, Doctor, Police }, new Vector2(0.165f, 0f), 0.044f);
+            // Quick play uses the design doc's first three helpers (see CardDesignsBuilder.Catalog).
+            ChipRow(quickContent, new[] { Fire, Doctor, Librarian }, new Vector2(0.165f, 0f), 0.044f);
 
             var howTo = MakeButton("Btn_HowToPlay", panel, new Vector2(-smallX, smallY), new Vector2(smallW, smallH), UIColors.Lilac, out var howContent);
             Label(howContent, "?", bold, 0.056f, UIColors.Coral, new Vector2(-0.085f, 0.002f), 0.05f);
