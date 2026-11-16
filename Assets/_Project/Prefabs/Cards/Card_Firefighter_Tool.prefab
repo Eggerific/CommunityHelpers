@@ -121,6 +121,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardScript
   slotPull: {fileID: 0}
+  cardCategory: Firefighter/Tool
   returnHomeDrop: 1
 --- !u!1 &5250348943645660054
 GameObject:

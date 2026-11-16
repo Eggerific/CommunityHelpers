@@ -8,6 +8,9 @@ public class CardScript : MonoBehaviour
 {
     public CardPlaceSlot slotPull = null;
 
+    // Which slot this card belongs in, e.g. "Doctor/Tool". Matches CardPlaceSlot.cardCategory.
+    public string cardCategory;
+
     private bool cardLock = false;
 
     // Found anywhere under this card (e.g. the HandGrab building block child).
@@ -81,10 +84,36 @@ public class CardScript : MonoBehaviour
             if (slotPull && ok)
             {
                 gameObject.transform.parent = slotPull.gameObject.transform;
-                cardLock = true;
+                LockInPlace();
             }
         }
 
+    }
+
+    /// <summary>Puts the card straight into a slot and locks it there (used when the game lays out the helpers).</summary>
+    public void PlaceInSlot(CardPlaceSlot sp)
+    {
+        slotPull = sp;
+        transform.SetParent(sp.transform, false);
+        LockInPlace();
+    }
+
+    // Snap onto the slot and stop physics on the card. Stacked cards overlap a little, so a card left
+    // under gravity would jitter and shove its neighbors. Grabbing still works: the Grabbable puts the
+    // card back to kinematic when it's let go, and Update snaps it back onto the slot.
+    private void LockInPlace()
+    {
+        cardLock = true;
+        transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.identity;
+        var rb = body != null ? body : GetComponent<Rigidbody>();
+        if (rb == null) return;
+        if (!rb.isKinematic)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+        rb.isKinematic = true;
     }
 
     public void SetPull(CardPlaceSlot sp)

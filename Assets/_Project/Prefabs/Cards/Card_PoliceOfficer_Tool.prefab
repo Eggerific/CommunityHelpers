@@ -216,6 +216,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardScript
   slotPull: {fileID: 0}
+  cardCategory: PoliceOfficer/Tool
   returnHomeDrop: 1
 --- !u!1001 &4222454841148629242
 PrefabInstance:

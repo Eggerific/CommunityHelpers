@@ -6,8 +6,8 @@ using UnityEngine;
 namespace CommunityHelpers.EditorTools
 {
     /// <summary>
-    /// Game-scene table layout: the card designs in front of the player, Robo out of the way, and the
-    /// card-placement test slot + deck off to the side. Used by the Game scene build and by the menu item
+    /// Game-scene table layout: the card table in front of the player (see CardTableBuilder), the placeholder
+    /// easel pushed back behind it, and Robo out of the way. Used by the Game scene build and by the menu item
     /// (which updates the existing Game scene in place, keeping hand-made changes).
     /// </summary>
     public static class GameTableBuilder
@@ -16,9 +16,9 @@ namespace CommunityHelpers.EditorTools
         // Back-right corner: ~1.2 m from the seat, out of reach, so nobody grabs Robo by accident.
         private static readonly Vector3 RoboGamePosition = new(0.6f, 0f, 0.3f);
 
-        // Van's card-placement test (slot + deck), moved right of the card rows.
-        private static readonly Vector3 TestSlotPosition = new(0.62f, 0f, -0.40f);
-        private static readonly Vector3 TestDeckPosition = new(0.80f, 0f, -0.415f);
+        // The easel stands where the menu put it (over the middle of the table); in the game it would cover
+        // the far end of the helper lanes, so it moves back. Its "Back to menu" button is pressed with the ray.
+        private static readonly Vector3 EaselGameOffset = new(0f, 0f, 0.30f);
 
         [MenuItem("Community Helpers/Update Game Table (Cards + Robo)", priority = 3)]
         public static void UpdateGameScene()
@@ -44,9 +44,18 @@ namespace CommunityHelpers.EditorTools
 
         public static void Apply(Transform table)
         {
-            CardDesignsBuilder.PlaceCards(table);
-            MoveTestFixtures(table);
+            CardTableBuilder.Build(table);
+            HideTestFixtures(table);
+            MoveEasel(table);
             SetUpRobo(table);
+        }
+
+        private static void MoveEasel(Transform table)
+        {
+            var easel = table.Find("GameBoard");
+            if (easel == null) return;
+            easel.localPosition = EaselGameOffset;
+            EditorUtility.SetDirty(easel);
         }
 
         /// <summary>Robo stands at the back-right corner and can't be distance-grabbed (reaching still works).</summary>
@@ -72,39 +81,19 @@ namespace CommunityHelpers.EditorTools
         }
 
         /// <summary>
-        /// The hand-made card-placement test ("Spots" slot group and "Deck" with its test "Card") would sit
-        /// under the new card rows, so move it to the right. Skipped when it isn't in the scene.
+        /// Van's hand-made card-placement test ("Spots" slot, "Deck" and its test "Card") is replaced by the
+        /// card table's real slots and draw deck. It's switched off rather than deleted, so it's easy to
+        /// bring back for testing. Skipped when it isn't in the scene.
         /// </summary>
-        private static void MoveTestFixtures(Transform table)
+        private static void HideTestFixtures(Transform table)
         {
-            var spots = table.Find("Spots");
-            if (spots != null)
+            foreach (Transform child in table)
             {
-                // The slot itself is a child offset in x; place the slot (not the group) at TestSlotPosition.
-                var slot = spots.childCount > 0 ? spots.GetChild(0) : spots;
-                Vector3 offset = slot == spots ? Vector3.zero : slot.localPosition;
-                spots.localPosition = new Vector3(TestSlotPosition.x - offset.x, spots.localPosition.y, TestSlotPosition.z - offset.z);
-                EditorUtility.SetDirty(spots);
-            }
-
-            var deck = table.Find("Deck");
-            if (deck != null)
-            {
-                Vector3 shift = new Vector3(TestDeckPosition.x, deck.localPosition.y, TestDeckPosition.z) - deck.localPosition;
-                deck.localPosition += shift;
-                EditorUtility.SetDirty(deck);
-
-                // The test card lying on the deck comes along.
-                foreach (Transform child in table)
-                {
-                    if (child.name != "Card" || child.GetComponent<CardScript>() == null) continue;
-                    Vector3 p = child.localPosition;
-                    if (Mathf.Abs(p.x - (deck.localPosition.x - shift.x)) < 0.05f && Mathf.Abs(p.z - (deck.localPosition.z - shift.z)) < 0.05f)
-                    {
-                        child.localPosition = p + new Vector3(shift.x, 0f, shift.z);
-                        EditorUtility.SetDirty(child);
-                    }
-                }
+                bool isTest = child.name == "Spots" || child.name == "Deck" ||
+                              (child.name == "Card" && child.GetComponent<CardScript>() != null);
+                if (!isTest || !child.gameObject.activeSelf) continue;
+                child.gameObject.SetActive(false);
+                EditorUtility.SetDirty(child.gameObject);
             }
         }
     }
