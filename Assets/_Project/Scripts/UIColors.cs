@@ -45,5 +45,8 @@ namespace CommunityHelpers
         public static readonly Color32 Roof       = new(0x4A, 0x55, 0x78, 255);
         public static readonly Color32 Teal       = new(0x2B, 0xA5, 0x9B, 255);
         public static readonly Color32 Leaf       = new(0x5E, 0xA8, 0x5C, 255);
+        public static readonly Color32 GardenPath = new(0xE6, 0xD9, 0xBF, 255); // path outside the window
+        public static readonly Color32 BubbleEdge = new(0x1F, 0x2A, 0x44, 255); // speech bubble outline (Ink)
+        public static readonly Color32 FireRed    = new(0xD9, 0x48, 0x3B, 255); // firefighter's helmet
     }
 }
