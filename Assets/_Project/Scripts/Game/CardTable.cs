@@ -34,6 +34,8 @@ namespace CommunityHelpers
                  "workplace card starts in the deck. Raise the counts below to deal a starting hand.")]
         [SerializeField] private Transform handArea;
         [SerializeField] private float handSpacing = 0.092f;
+        [Tooltip("How many card spots fit across the hand mat (a wrong card is sent back to a free one).")]
+        [SerializeField] private int handSpots = 7;
         [SerializeField] private int fullGameHand = 0;
         [SerializeField] private int quickPlayHand = 0;
 
@@ -66,6 +68,21 @@ namespace CommunityHelpers
 
         public IReadOnlyList<Lane> Lanes => lanes;
         public int ActiveLaneCount { get; private set; }
+        public IReadOnlyList<CardScript> AiCards => aiCards;
+        public int HandSpotCount => Mathf.Max(1, handSpots);
+
+        /// <summary>
+        /// Spot <paramref name="i"/> on the hand mat (world space) for a face-up card. Spot 0 is the middle;
+        /// the rest alternate right and left of it, working outward.
+        /// </summary>
+        public Pose HandSpot(int i, CardScript card)
+        {
+            i = Mathf.Clamp(i, 0, HandSpotCount - 1);
+            int step = (i + 1) / 2;
+            float x = (i % 2 == 1 ? step : -step) * handSpacing;
+            float y = (card != null ? HalfThickness(card) : 0.002f) + 0.001f;
+            return new Pose(handArea.TransformPoint(new Vector3(x, y, 0f)), handArea.rotation);
+        }
 
         private void Awake()
         {

@@ -6,8 +6,8 @@ using UnityEngine;
 namespace CommunityHelpers.EditorTools
 {
     /// <summary>
-    /// Game-scene table layout: the card table in front of the player (see CardTableBuilder), the placeholder
-    /// easel pushed back behind it, and Robo out of the way. Used by the Game scene build and by the menu item
+    /// Game-scene table layout: the card table in front of the player with its progress track and end-of-round
+    /// pieces (see CardTableBuilder), and Robo out of the way. Used by the Game scene build and by the menu item
     /// (which updates the existing Game scene in place, keeping hand-made changes).
     /// </summary>
     public static class GameTableBuilder
@@ -16,11 +16,19 @@ namespace CommunityHelpers.EditorTools
         // Back-right corner: ~1.2 m from the seat, out of reach, so nobody grabs Robo by accident.
         private static readonly Vector3 RoboGamePosition = new(0.6f, 0f, 0.3f);
 
-        // The easel stands where the menu put it (over the middle of the table); in the game it would cover
-        // the far end of the helper lanes, so it moves back. Its "Back to menu" button is pressed with the ray.
-        private static readonly Vector3 EaselGameOffset = new(0f, 0f, 0.30f);
+        /// <summary>
+        /// Command line (Unity closed):
+        /// Unity.exe -batchmode -projectPath . -executeMethod CommunityHelpers.EditorTools.GameTableBuilder.UpdateGameSceneAndExit
+        /// Exits straight away; "-quit" can hang for minutes waiting on background work.
+        /// </summary>
+        public static void UpdateGameSceneAndExit()
+        {
+            UpdateGameScene();
+            AssetDatabase.SaveAssets();
+            EditorApplication.Exit(0);
+        }
 
-        [MenuItem("Community Helpers/Update Game Table (Cards + Robo)", priority = 3)]
+        [MenuItem("Community Helpers/Update Game Table (Cards, Progress, Robo)", priority = 3)]
         public static void UpdateGameScene()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -44,18 +52,20 @@ namespace CommunityHelpers.EditorTools
 
         public static void Apply(Transform table)
         {
-            CardTableBuilder.Build(table);
+            CardTableBuilder.Build(table); // cards, star track, end sign and buttons, rules
+            RemoveEasel(table);
             HideTestFixtures(table);
-            MoveEasel(table);
             SetUpRobo(table);
         }
 
-        private static void MoveEasel(Transform table)
+        /// <summary>
+        /// The Game scene used to have the menu's easel (first a placeholder, then a progress board). Progress
+        /// and the end of the round are on the table now, so nothing stands in front of the player.
+        /// </summary>
+        private static void RemoveEasel(Transform table)
         {
             var easel = table.Find("GameBoard");
-            if (easel == null) return;
-            easel.localPosition = EaselGameOffset;
-            EditorUtility.SetDirty(easel);
+            if (easel != null) Object.DestroyImmediate(easel.gameObject);
         }
 
         /// <summary>Robo stands at the back-right corner and can't be distance-grabbed (reaching still works).</summary>

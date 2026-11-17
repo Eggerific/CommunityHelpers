@@ -134,10 +134,8 @@ Main ──Play / Quick play──▶ Who are you today? ──Let's go!──�
   - Four animal buttons (Fox, Bear, Owl, Bunny) with simple 3D faces (`Editor/AnimalFaces.cs`, placeholders for real art).
   - The picked animal stays glowing and slightly bigger, and Robo nods.
   - **Let's go!** is grayed out until an animal is picked. It fades the screen and loads the **Game** scene.
-- **Game scene (placeholder):** one scene for both modes. `GameSession` carries the mode and animal.
-  - Same room, town and Robo, with a confetti burst on load.
-  - The easel only says **"Play"** or **"Quick play"** and "This is where the game will be played, on the table", plus **Back to menu**.
-  - The real game will be played on the table. The team replaces this board when it's ready.
+- **Game scene:** one scene for both modes. `GameSession` carries the mode and animal.
+  - Same room, town and Robo, with a confetti burst on load. There's no easel: the game, its progress and the end of the round are all on the table (see [GameTable.md](GameTable.md)).
 - **Settings:**
   - Volume − / + with 5 dots (applied with `AudioListener.volume`, saved in PlayerPrefs by `GameSettings`).
   - **Re-center view:** puts the table, menu and Robo back in front of the player (for when a kid shifts in the seat or turns around). Robo waves.

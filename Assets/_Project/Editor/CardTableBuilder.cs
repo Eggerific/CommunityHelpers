@@ -126,6 +126,22 @@ namespace CommunityHelpers.EditorTools
             cardTable.Deal(helperCount, seed: 1, lockHelpers: false); // show a Full game deal in the editor
             EditorUtility.SetDirty(cardTable);
 
+            // ---- Progress on the table: star track past the lanes, done signs, end sign, Home / Play again ----
+            var roboTf = table.Find("Robo");
+            var robo = roboTf != null ? roboTf.GetComponent<RoboController>() : null;
+            float laneFarZ = LaneNearZ + L + Peek * (SlotNames.Length - 1) + 0.008f; // far edge of the lane mats
+            var progress = ProgressTrackBuilder.Build(root, lanes, laneSpacing, MatThickness,
+                laneFarZ + 0.012f + ProgressTrackBuilder.SegmentLength * 0.5f, HandZ, robo);
+
+            // ---- Rules, scoring and the correct-card effects (CardGame) ----
+            var game = root.gameObject.AddComponent<CardGame>();
+            var plusOne = Text3D("PlusOne", root, "+1", FontSetup.Load(FontSetup.FredokaBold), 0.045f, UIColors.Yay,
+                Vector3.zero, new Vector2(0.1f, 0.06f));
+            plusOne.textWrappingMode = TextWrappingModes.NoWrap;
+            plusOne.gameObject.SetActive(false);
+            game.EditorSetup(cardTable, progress, robo, BuildSparkles(root), plusOne);
+            EditorUtility.SetDirty(game);
+
             float span = helperCount * laneSpacing;
             if (span > 2f * PileX - w - 0.06f)
                 Debug.LogWarning("[CardTableBuilder] The helper lanes run into the piles beside the hand.");
@@ -169,6 +185,62 @@ namespace CommunityHelpers.EditorTools
                 Mat3D("Strip", tag, w - 0.004f, Peek - 0.006f, Mat("CardTag_" + SlotNames[i], tagColors[i]), depth: 0.0008f);
                 FlatText("Text", tag, tagText[i], font, i == 2 ? 0.012f : 0.016f, w - 0.01f, 0.0009f);
             }
+        }
+
+        // ------------------------------------------------------------------ Effects
+
+        /// <summary>
+        /// Soft gold/green sparkles that puff up out of a slot when the right card lands in it. CardGame moves
+        /// the system to the slot and calls Emit, so it never emits on its own.
+        /// </summary>
+        private static ParticleSystem BuildSparkles(Transform root)
+        {
+            var go = new GameObject("Sparkles");
+            go.transform.SetParent(root, false);
+            go.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f); // cone points up
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            var main = ps.main;
+            main.playOnAwake = true; // keeps running (with no emission of its own) so Emit always simulates
+            main.loop = true;
+            main.duration = 1f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.5f, 0.9f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.25f, 0.6f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.008f, 0.018f);
+            main.gravityModifier = 0.35f;
+            main.maxParticles = 400;
+            var palette = new Gradient { mode = GradientMode.Fixed };
+            palette.SetKeys(
+                new[]
+                {
+                    new GradientColorKey(UIColors.Sun, 0.4f), new GradientColorKey(UIColors.Yay, 0.7f),
+                    new GradientColorKey(UIColors.Cream, 1f),
+                },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) });
+            main.startColor = new ParticleSystem.MinMaxGradient(palette) { mode = ParticleSystemGradientMode.RandomColor };
+
+            var emission = ps.emission;
+            emission.rateOverTime = 0f;
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 35f;
+            shape.radius = 0.03f;
+
+            var size = ps.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1f, 1f, 0f));
+
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            var mat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-ParticleSystem.mat");
+            if (mat == null) mat = Unlit("Sparkle", UIColors.Sun);
+            renderer.sharedMaterial = mat;
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return ps;
         }
 
         // ------------------------------------------------------------------ Pieces

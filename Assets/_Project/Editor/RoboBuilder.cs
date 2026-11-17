@@ -96,7 +96,8 @@ namespace CommunityHelpers.EditorTools
             Cyl("Stalk", antenna, new Vector3(0, 0.035f, 0), 0.0045f, 0.05f, joint);
             Sphere("Ball", antenna, new Vector3(0, 0.064f, 0), Vector3.one * 0.03f, sun);
 
-            // ---- Pick up: kinematic body + collider + Meta ISDK grab (direct grab, and distance grab from the seat).
+            // ---- Pick up: kinematic body + collider + Meta ISDK direct grab only. No distance grab (team call,
+            // Nov 16): a hand pointed anywhere near Robo would pick him up from the seat.
             var rb = root.gameObject.AddComponent<Rigidbody>();
             rb.isKinematic = true;
             rb.useGravity = false;
@@ -107,16 +108,12 @@ namespace CommunityHelpers.EditorTools
             // hands AND controllers, so Robo needs the HandGrab interactables (plain GrabInteractable is never found).
             var grabbable = root.gameObject.AddComponent<Oculus.Interaction.Grabbable>();
             var grab = root.gameObject.AddComponent<Oculus.Interaction.HandGrab.HandGrabInteractable>();
-            var distanceGrab = root.gameObject.AddComponent<Oculus.Interaction.HandGrab.DistanceHandGrabInteractable>();
-            foreach (Object interactable in new Object[] { grab, distanceGrab })
-            {
-                var gso = new SerializedObject(interactable);
-                gso.FindProperty("_rigidbody").objectReferenceValue = rb;
-                gso.FindProperty("_pointableElement").objectReferenceValue = grabbable;
-                // Pinch (trigger / finger pinch) and palm (grip / whole-hand grab) both pick Robo up.
-                gso.FindProperty("_supportedGrabTypes").intValue = (int)Oculus.Interaction.Grab.GrabTypeFlags.All;
-                gso.ApplyModifiedPropertiesWithoutUndo();
-            }
+            var gso = new SerializedObject(grab);
+            gso.FindProperty("_rigidbody").objectReferenceValue = rb;
+            gso.FindProperty("_pointableElement").objectReferenceValue = grabbable;
+            // Pinch (trigger / finger pinch) and palm (grip / whole-hand grab) both pick Robo up.
+            gso.FindProperty("_supportedGrabTypes").intValue = (int)Oculus.Interaction.Grab.GrabTypeFlags.All;
+            gso.ApplyModifiedPropertiesWithoutUndo();
 
             // ---- Controller
             var ctrl = root.gameObject.AddComponent<RoboController>();

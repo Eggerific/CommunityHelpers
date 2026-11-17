@@ -21,6 +21,7 @@ namespace CommunityHelpers
         public static readonly Color32 Violet    = new(0x7C, 0x6B, 0xC4, 255); // Owl
         public static readonly Color32 Muted     = new(0x8A, 0x93, 0xA6, 255); // small notes
         public static readonly Color32 TryAgain  = new(0xF2, 0x9E, 0x4C, 255); // gentle "not yet" (never red)
+        public static readonly Color32 SlotEmpty = new(0xDD, 0xD5, 0xC6, 255); // empty progress pip / bar track on cream
 
         // In-game card types (not used by the menu yet)
         public static readonly Color32 CardHelper    = new(0xF4, 0xB9, 0x42, 255);

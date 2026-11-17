@@ -18,14 +18,15 @@ The **Community Helper** card art shows the job too ("Helps sick people"), so it
 ## Layout
 
 ```
-                 (easel, pushed back)                    Robo (back right)
-
-   far     [ AI ]  [ AI ]  [ AI ]  [ AI ]  [ AI ]  [ AI ]
+                      [ You did it! ]  (pops up at the end)          Robo (back right)
+   far     [* *]   [* *]   [* *]   [* *]   [* *]   [* *]      star track: a star spot per card
+           [ AI ]  [ AI ]  [ AI ]  [ AI ]  [ AI ]  [ AI ]
            [WORK]  [WORK]  [WORK]  [WORK]  [WORK]  [WORK]     each slot sits 4.5 cm farther
            [TOOL]  [TOOL]  [TOOL]  [TOOL]  [TOOL]  [TOOL]     than the one before it, 1.5 mm higher
            Fire    Doctor  Library Police  Teacher Mail       helper cards, face up
 
-  DISCARD    [ hand mat: drawn cards go here ]               DRAW (12 cards + AI cards, face down)
+  (home)  DISCARD    [ hand mat: drawn cards go here ]       DRAW (12 cards + AI cards, face down)
+                       [Play again]  [Home]   (rise out of the table at the end)
    near    ---------------------------- table edge ----------------------------
                                     (player)
 ```
@@ -44,14 +45,44 @@ The **Community Helper** card art shows the job too ("Helps sick people"), so it
 | Card prefabs, the helper list and its order, card categories | `Assets/_Project/Editor/CardDesignsBuilder.cs` |
 | Sets up at game start: picks 3 or 6 lanes, centers them, shuffles, stacks the deck (a starting hand can be turned on with Full/Quick Hand) | `Assets/_Project/Scripts/Game/CardTable.cs` |
 | Slot snapping (Van's scripts) | `Assets/Scripts/CardPlaceSlot.cs`, `Assets/Scripts/CardScript.cs` |
+| The rules: scoring, wrong cards, end of round | `Assets/_Project/Scripts/Game/CardGame.cs` |
+| Per card: turns face up when drawn, notices a wrong slot, flies back to the hand | `Assets/_Project/Scripts/Game/PlayCard.cs` |
+| Progress on the table (star track), end sign, Home / Play again buttons | `Assets/_Project/Scripts/Menu/GameSceneController.cs`, built by `Assets/_Project/Editor/ProgressTrackBuilder.cs` |
 
-To rebuild: **Community Helpers → Update Game Table (Cards + Robo)**. This replaces the `CardTable` group in `Game.unity` and keeps everything else. In the editor the scene shows a fixed Full game deal. In Play mode, a new shuffle happens every game; set **Shuffle Seed** on `CardTable` to get the same deal every time.
+To rebuild: **Community Helpers → Update Game Table (Cards, Progress, Robo)**. This replaces the `CardTable` group in `Game.unity` (and removes the old easel, if it's still there) and keeps everything else. In the editor the scene shows a fixed Full game deal. In Play mode, a new shuffle happens every game; set **Shuffle Seed** on `CardTable` to get the same deal every time.
+
+With Unity closed, the same rebuild runs from the command line (it exits by itself when done):
+`Unity.exe -batchmode -projectPath . -executeMethod CommunityHelpers.EditorTools.GameTableBuilder.UpdateGameSceneAndExit`
 
 Van's earlier test slot, deck and card are switched off (not deleted) in the scene.
 
+## How a round plays
+
+Team decisions from Nov 16, 2026, on top of the design doc:
+
+| | Rule |
+|---|---|
+| Drawing | Draw freely: there are no turns. The player picks up any card from the deck. Cards stay face down until the player turns them over (no auto-flip); a card goes into its slot face up either way. |
+| Right card | Dropping a card on its helper's slot snaps it in and scores **+1**. The slot puffs sparkles, a "+1" floats up, the card pops and Robo gives a thumbs up. When a helper has all its cards, Robo nods. |
+| Wrong card | If a card lands on a slot that doesn't take it (another helper's slot or a helper card), the card flies back to a free spot on the hand mat (D6), the same way up it landed. There's no penalty. Dropping it anywhere on its own helper's lane counts as right. |
+| Progress | All on the table, so nothing stands in front of the player. Past the far end of each lane is a dark strip with a star spot for each card that helper needs. When a card goes in, a gold star spins out of its slot and lands in the next spot. When all of a helper's cards are in, its row of stars is full; nothing else pops up. A small **Home** button sits in the table's near-left corner. |
+| End | When every card is placed: confetti from the title sign, sparkles on every slot, and Robo jumps. A "You did it!" sign with the star count pops up behind the lanes, the small Home button sinks away, and two big buttons rise out of the table over the hand mat: **Play again** (same mode) and **Home**. |
+| Not used | No timer (D10, on hold), no "Explain why" (D4, dropped), and no sound effects or controller vibration for now (a teammate is making the sounds). |
+
+A full game has 12 cards to place (6 helpers × Tool + Workplace); Quick play has 6.
+
+### Testing in the editor
+
+In Play mode: **P** places the next card in its slot, **O** drops a card on a wrong slot (it should fly back), **R** restarts and **Backspace** goes to the main menu. W isn't used because the Meta XR Simulator moves with WASD.
+
+## Hooks for what's next
+
+- **Hints (Robo on screen, with a voice-over).** `CardGame.WrongCard` fires with the card and the slot it was dropped on, after the card has started flying back. The hint goes there. The design doc's hint style (D6) still needs writing.
+- **AI Suggestion cards** (a teammate is designing them). Add the AI card objects to `CardTable` → **AI Cards** and they're shuffled into the deck. An AI card that a lane's AI slot accepts (category `"<Helper>/AI"`, e.g. `"Doctor/AI"`) becomes a card to place: it counts toward the total, scores +1, and adds a third star spot to that helper's part of the track. Still to do: AI cards that should be **discarded** (D1, judging a false card), and the discard tray accepting AI cards only (D5). Right now the tray has no logic, so a card dropped in it just sits there.
+- **Sounds** (a teammate is making them). `CardGame` has four empty slots: Correct, Lane Done, Fanfare and Wrong. Nothing plays until a clip is assigned.
+
 ## Not built yet
 
-- AI Suggestion cards (no art yet), and discard pile logic that only accepts AI cards (D5).
-- Wrong-match feedback (D6): the card goes back to the hand with a hint.
-- Turns, scoring, "Explain why", and end of round (D1, D4, D10).
-- Read-aloud (D8).
+- AI Suggestion cards and the discard pile rules (D1, D5): see the hooks above.
+- Hints for a wrong card (D6) and read-aloud (D8).
+- Timer (D10, on hold).
