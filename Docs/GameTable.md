@@ -73,16 +73,16 @@ A full game has 12 cards to place (6 helpers × Tool + Workplace); Quick play ha
 
 ### Testing in the editor
 
-In Play mode: **P** places the next card in its slot, **O** drops a card on a wrong slot (it should fly back), **R** restarts and **Backspace** goes to the main menu. W isn't used because the Meta XR Simulator moves with WASD.
+In Play mode: **P** places the next card in its slot, **O** drops a card on a wrong slot (it should fly back, and its helper comes to the window), **H** shows a hint for a random card, **R** restarts and **Backspace** goes to the main menu. W isn't used because the Meta XR Simulator moves with WASD.
 
 ## Hooks for what's next
 
-- **Hints (Robo on screen, with a voice-over).** `CardGame.WrongCard` fires with the card and the slot it was dropped on, after the card has started flying back. The hint goes there. The design doc's hint style (D6) still needs writing.
+- **Hints** are built: the helper the card belongs to walks up to the window outside and talks in a speech bubble while Robo points at them. See [Hints.md](Hints.md). They start from `CardGame.WrongCard`, which fires with the card and the slot it was dropped on.
 - **AI Suggestion cards** (a teammate is designing them). Add the AI card objects to `CardTable` → **AI Cards** and they're shuffled into the deck. An AI card that a lane's AI slot accepts (category `"<Helper>/AI"`, e.g. `"Doctor/AI"`) becomes a card to place: it counts toward the total, scores +1, and adds a third star spot to that helper's part of the track. Still to do: AI cards that should be **discarded** (D1, judging a false card), and the discard tray accepting AI cards only (D5). Right now the tray has no logic, so a card dropped in it just sits there.
 - **Sounds** (a teammate is making them). `CardGame` has four empty slots: Correct, Lane Done, Fanfare and Wrong. Nothing plays until a clip is assigned.
 
 ## Not built yet
 
 - AI Suggestion cards and the discard pile rules (D1, D5): see the hooks above.
-- Hints for a wrong card (D6) and read-aloud (D8).
+- Voice-overs for the hints and read-aloud (D8): a teammate is recording them. The hint bubbles show "..." until then.
 - Timer (D10, on hold).

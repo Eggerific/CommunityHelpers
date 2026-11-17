@@ -45,6 +45,7 @@ namespace CommunityHelpers
 
         private Transform _target;
         private Vector3 _rigRest, _bodyRest, _pupilLRest, _pupilRRest;
+        private Quaternion _rigRotRest;
         private Quaternion _headRest, _armLRest, _armRRest, _antennaRest, _bodyRotRest;
         private Vector3 _eyeScale;
         private Action _action;
@@ -68,6 +69,7 @@ namespace CommunityHelpers
         private void Awake()
         {
             _rigRest = rig.localPosition;
+            _rigRotRest = rig.localRotation;
             _bodyRest = body.localPosition;
             _bodyRotRest = body.localRotation;
             _headRest = head.localRotation;
@@ -137,6 +139,53 @@ namespace CommunityHelpers
 
         public void Wave() => Begin(Action.Wave);
 
+        /// <summary>
+        /// Points at <paramref name="target"/> (e.g. a helper at the window giving a hint) until
+        /// <see cref="StopPointing"/>: Robo turns part way toward it, then lifts the arm on that side. "Look!"
+        /// </summary>
+        public void PointAt(Transform target)
+        {
+            if (target == null) return;
+            // Which way to turn and which arm to use, worked out once so he doesn't flip sides mid-point.
+            // Robo faces -Z in his own space, so his right is +X.
+            Vector3 d = transform.InverseTransformDirection(target.position - rig.position);
+            d.y = 0f;
+            float yawToTarget = Mathf.Atan2(-d.x, -d.z) * Mathf.Rad2Deg; // turn that would face it
+            if (_pointTarget == null || _pointAmount <= 0f)
+                _pointSide = Mathf.Abs(yawToTarget) > 170f ? -1 : (yawToTarget >= 0f ? -1 : 1);
+            _pointTurn = Mathf.Min(Mathf.Abs(yawToTarget), maxPointTurn);
+            _pointTarget = target;
+            _pointLast = target;
+            _surprised = 1f;
+            _action = Action.None;
+        }
+
+        public void StopPointing() => _pointTarget = null;
+
+        /// <summary>
+        /// Holds the right hand up toward the player for a high five (with a little "come on!" wiggle) until
+        /// called with false. RoboHighFive does the rest.
+        /// </summary>
+        public void HoldUpHand(bool up)
+        {
+            _handUp = up;
+            if (up) _action = Action.None;
+        }
+
+        private bool _handUp;
+        private float _handUpAmount;
+
+        [Header("Pointing")]
+        [Tooltip("How far (degrees) Robo turns toward what he points at before lifting his arm.")]
+        [SerializeField] private float maxPointTurn = 55f;
+        private const float PointTime = 0.9f;  // seconds to turn and lift (and to lower and turn back)
+
+        private Transform _pointTarget;  // null once StopPointing is called
+        private Transform _pointLast;    // kept while the arm comes down
+        private float _pointAmount;      // 0..1: first half turns, second half lifts the arm
+        private int _pointSide = 1;      // +1: turn and point with the right arm; -1: the left
+        private float _pointTurn;        // degrees
+
         private void Begin(Action a)
         {
             _action = a;
@@ -168,6 +217,7 @@ namespace CommunityHelpers
                 }
             }
 
+            if (_pointTarget != null || _handUp) _nextFidget = t + Random.Range(fidgetEvery.x, fidgetEvery.y); // no fidgets while pointing or waiting for a high five
             if (!Held && !_returning && _action == Action.None && t >= _nextFidget)
                 Begin(Random.value < 0.5f ? Action.Wave : Action.Yes);
 
@@ -222,6 +272,44 @@ namespace CommunityHelpers
                 }
             }
 
+            // ---- Pointing (a helper at the window has a hint). The window is behind Robo, so he first turns
+            // part way toward it, then lifts the arm on that side, out and up. The arm never swings back
+            // through his body. Letting go runs it in reverse: arm down, then turn back.
+            _pointAmount = Mathf.MoveTowards(_pointAmount, _pointTarget != null ? 1f : 0f, dt / PointTime);
+            float turnYaw = 0f;
+            if (_pointAmount > 0f && _pointLast != null)
+            {
+                float turnK = Ease(Mathf.Clamp01(_pointAmount / 0.55f));
+                float armK = Ease(Mathf.Clamp01((_pointAmount - 0.45f) / 0.55f));
+                // A positive yaw turns Robo to his left (-X), so pointing with the left arm (side -1) turns positive.
+                turnYaw = -_pointSide * _pointTurn * turnK;
+
+                var shoulder = _pointSide > 0 ? armRight : armLeft;
+                Vector3 dir = body.InverseTransformDirection((_pointLast.position - shoulder.position).normalized);
+                // Keep it a natural point: out to that side (Robo's right is +X), not behind him (+Z), a bit up.
+                dir.x = _pointSide * Mathf.Max(_pointSide * dir.x, 0.45f);
+                dir.z = Mathf.Min(dir.z, 0.25f);
+                dir.y = Mathf.Max(dir.y, 0.15f);
+                // The arm hangs along -Y from the shoulder, so aim -Y along dir, with a little bob.
+                var aim = Quaternion.FromToRotation(Vector3.down, dir.normalized) * Quaternion.Euler(0, 0, Mathf.Sin(t * 5f) * 4f);
+                if (_pointSide > 0) armR = Quaternion.Slerp(armR, aim, armK);
+                else armL = Quaternion.Slerp(armL, aim, armK);
+                tilt += 6f * armK * _pointSide;
+            }
+            else _pointLast = null;
+
+            // ---- High five: right hand up and out toward the player, palm forward, wiggling "come on!"
+            _handUpAmount = Mathf.MoveTowards(_handUpAmount, _handUp ? 1f : 0f, dt * 4f);
+            if (_handUpAmount > 0f)
+            {
+                float k = Ease(_handUpAmount);
+                // Up, a little out to his right (+X) and toward the player (-Z). The arm hangs along -Y.
+                var up = Quaternion.FromToRotation(Vector3.down, new Vector3(0.3f, 0.85f, -0.45f).normalized);
+                var wiggle = Quaternion.Euler(0, 0, Mathf.Sin(t * 7f) * 6f * (_handUp ? 1f : 0f));
+                armR = Quaternion.Slerp(armR, up * wiggle, k);
+                tilt -= 5f * k;
+            }
+
             // ---- "Wheee!" pose while held: arms up and waving, chin up, head wiggle
             float held = Ease(_heldAmount);
             if (held > 0f)
@@ -236,6 +324,7 @@ namespace CommunityHelpers
             if (mouthOh != null && mouthOh.activeSelf != held > 0.5f) mouthOh.SetActive(held > 0.5f);
 
             rig.localPosition = _rigRest + rigOffset;
+            rig.localRotation = _rigRotRest * Quaternion.Euler(0f, turnYaw, 0f);
             body.localPosition = _bodyRest + Vector3.up * bob;
             body.localRotation = _bodyRotRest * Quaternion.Euler(0, 0, sway * 0.5f);
             body.localScale = new Vector3(2f - squash, squash, 2f - squash);

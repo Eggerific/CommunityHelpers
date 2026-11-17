@@ -28,7 +28,7 @@ namespace CommunityHelpers.EditorTools
             EditorApplication.Exit(0);
         }
 
-        [MenuItem("Community Helpers/Update Game Table (Cards, Progress, Robo)", priority = 3)]
+        [MenuItem("Community Helpers/Update Game Table (Cards, Progress, Robo, People)", priority = 3)]
         public static void UpdateGameScene()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -53,6 +53,7 @@ namespace CommunityHelpers.EditorTools
         public static void Apply(Transform table)
         {
             CardTableBuilder.Build(table); // cards, star track, end sign and buttons, rules
+            TownPeopleBuilder.Build(table); // people outside the window who give the hints
             RemoveEasel(table);
             HideTestFixtures(table);
             SetUpRobo(table);
@@ -80,6 +81,9 @@ namespace CommunityHelpers.EditorTools
             robo.localPosition = RoboGamePosition;
             robo.localEulerAngles = new Vector3(0f,
                 MenuBoardBuilder.YawTowardSeat(RoboGamePosition, MainMenuSceneBuilder.TableCenterZ), 0f);
+
+            // He wears the hat the player dressed him in on the menu.
+            RoboHatsBuilder.AddHats(robo, wearSessionHat: true);
 
             // Distance grab lets a hand pointed anywhere near Robo pick him up from the seat.
             foreach (var distanceGrab in robo.GetComponentsInChildren<DistanceHandGrabInteractable>(true))
