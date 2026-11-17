@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Oculus.Interaction;
@@ -12,6 +13,15 @@ public class CardScript : MonoBehaviour
     public string cardCategory;
 
     private bool cardLock = false;
+
+    /// <summary>True once the card has snapped into a slot. It stays there for the rest of the game.</summary>
+    public bool IsLocked => cardLock;
+
+    /// <summary>
+    /// Raised when a player's card snaps into a slot that accepts it (not when the game lays out the
+    /// helper cards). CardGame listens to score the point.
+    /// </summary>
+    public static event Action<CardScript, CardPlaceSlot> Placed;
 
     // Found anywhere under this card (e.g. the HandGrab building block child).
     // Cards without one (such as a card pre-placed in a slot) are treated as never held.
@@ -85,6 +95,7 @@ public class CardScript : MonoBehaviour
             {
                 gameObject.transform.parent = slotPull.gameObject.transform;
                 LockInPlace();
+                Placed?.Invoke(this, slotPull);
             }
         }
 
