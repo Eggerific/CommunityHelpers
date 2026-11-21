@@ -12,57 +12,52 @@ using static CommunityHelpers.EditorTools.BuildKit;
 namespace CommunityHelpers.EditorTools
 {
     /// <summary>
-    /// Turns the card models in Assets/CardS into working, grabbable card prefabs
-    /// (Assets/_Project/Prefabs/Cards) and lays all 18 out face-up on the Game scene table.
+    /// Turns the card models in Assets/CardS into working, grabbable card prefabs (Assets/_Project/Prefabs/Cards).
+    /// CardTableBuilder puts them on the Game scene table.
     ///
-    /// Each prefab: root tagged "Card" with BoxCollider, Rigidbody, Grabbable and CardScript;
-    /// "Visual" child = the FBX, auto-oriented (art face-up, top of the art pointing away from the seat)
-    /// and scaled to <see cref="CardLength"/>; "Grab" child = controller + hand grab interactables.
-    /// Safe to re-run: prefabs are overwritten in place (same GUIDs) and the CardDesigns group is replaced.
+    /// Each prefab: root tagged "Card" with BoxCollider, Rigidbody, Grabbable and CardScript (cardCategory
+    /// "Helper/Kind", e.g. "Doctor/Tool"); "Visual" child = the FBX, auto-oriented (art face-up, top of the
+    /// art pointing away from the seat) and scaled to <see cref="CardLength"/>; "Grab" child = controller +
+    /// hand grab interactables.
+    /// Safe to re-run: prefabs are overwritten in place (same GUIDs).
     /// </summary>
     public static class CardDesignsBuilder
     {
         public const string PrefabDir = "Assets/_Project/Prefabs/Cards";
         private const string CardMaterialDir = MaterialDir + "/Cards";
-        private const string GroupName = "CardDesigns";
 
         // ---- Card size (meters) ----
         // 12 cm: ~1.4x a real playing card, so K-2 hands can grab them and the art reads from the seat.
-        private const float CardLength = 0.12f;    // long side; width follows the art's own aspect
+        public const float CardLength = 0.12f;     // long side; width follows the art's own aspect
         private const float MinThickness = 0.004f; // collider never thinner than this, so physics stays stable
-
-        // ---- Layout on the table (table space: origin = table-top surface, -z = toward the player) ----
-        // Two rows of nine centered in front of the seat, as close to the player's edge as fits (within reach).
-        // Each row holds three helpers; each helper's helper / tool / workplace cards sit side by side.
-        private const float EdgeMargin = 0.02f;    // gap between the near row and the table's near edge
-        private const float RowGap = 0.02f;
-        private const float ColumnGap = 0.015f, GroupGap = 0.04f;
-
-        private static float NearRowZ => -MainMenuSceneBuilder.TableSize.y * 0.5f + EdgeMargin + CardLength * 0.5f;
-        private static float[] RowZ => new[] { NearRowZ, NearRowZ + CardLength + RowGap };
 
         // ---- Texture sharpness (cards lie flat, so they're seen at a steep angle) ----
         private const int AnisoLevel = 16;
 
-        private enum Kind { Helper, Tool, Workplace }
+        // The "Community Helper" card art shows the helper and their job ("Helps sick people"),
+        // so it is the helper card and the job card in one. There are no separate job cards.
+        public enum Kind { Helper, Tool, Workplace }
 
-        // One entry per community helper: its helper, tool and workplace card models.
-        private static readonly (string helper, string[] fbx)[] Catalog =
+        // One entry per community helper, in the design doc's order (Quick play uses the first three):
+        // its helper, tool and workplace card models.
+        public static readonly (string helper, string[] fbx)[] Catalog =
         {
-            ("Doctor", new[] { "Assets/CardS/Doctor/DR card.fbx", "Assets/CardS/Tool for DR/DR_tool.fbx", "Assets/CardS/WP DR/WP DR.fbx" }),
             ("Firefighter", new[] { "Assets/CardS/FireFighter/Firefighter_card.fbx", "Assets/CardS/Tool for firefighter/Tool for firefighter.fbx", "Assets/CardS/WP Firefighter/WP Firefighter.fbx" }),
+            ("Doctor", new[] { "Assets/CardS/Doctor/DR card.fbx", "Assets/CardS/Tool for DR/DR_tool.fbx", "Assets/CardS/WP DR/WP DR.fbx" }),
             ("Librarian", new[] { "Assets/CardS/Librarian/Librarian_card.fbx", "Assets/CardS/Tool for Lib/Tool for Lib.fbx", "Assets/CardS/WP Libririan/WP Libririan.fbx" }),
-            ("MailCarrier", new[] { "Assets/CardS/Mail Carrier/Mailcarrier_card.fbx", "Assets/CardS/Tool for mail carrier/Tool for mail carrier.fbx", "Assets/CardS/WP MAIL/WP MAIL.fbx" }),
             ("PoliceOfficer", new[] { "Assets/CardS/Police officer/Police_card.fbx", "Assets/CardS/Tool for Police/Tool for Police.fbx", "Assets/CardS/WP Police Station/Workplace_police.fbx" }),
             ("Teacher", new[] { "Assets/CardS/Teacher/Teacher_card.fbx", "Assets/CardS/Tool for Teacher/Tool for Teacher.fbx", "Assets/CardS/WP TEACHER/WP TEACHER.fbx" }),
+            ("MailCarrier", new[] { "Assets/CardS/Mail Carrier/Mailcarrier_card.fbx", "Assets/CardS/Tool for mail carrier/Tool for mail carrier.fbx", "Assets/CardS/WP MAIL/WP MAIL.fbx" }),
         };
 
-        private struct BuiltCard
+        public struct BuiltCard
         {
             public int helperIndex;
             public Kind kind;
             public GameObject prefab;
         }
+
+        public static string Category(string helper, Kind kind) => $"{helper}/{kind}";
 
         // ------------------------------------------------------------------ Menu items
 
@@ -71,51 +66,9 @@ namespace CommunityHelpers.EditorTools
         [MenuItem("Community Helpers/Cards/Rebuild Card Prefabs", priority = 21)]
         public static void RebuildPrefabsMenu() => BuildAllPrefabs();
 
-        // ------------------------------------------------------------------ Scene placement
-
-        /// <summary>Builds the prefabs and lays them out on <paramref name="table"/>. Also called by the Game scene build.</summary>
-        public static Transform PlaceCards(Transform table)
-        {
-            var cards = BuildAllPrefabs();
-            if (cards.Count == 0) return null;
-
-            var old = table.Find(GroupName);
-            if (old != null) Object.DestroyImmediate(old.gameObject);
-            EnsureTableCollider(table);
-
-            var group = Group(GroupName, table);
-            float w = cards.Max(c => c.prefab.GetComponent<BoxCollider>().size.x);
-            float rowWidth = 9 * w + 6 * ColumnGap + 2 * GroupGap;
-            float x0 = -rowWidth * 0.5f + w * 0.5f; // centered on the seat
-            var rowZ = RowZ;
-
-            foreach (var c in cards)
-            {
-                int row = c.helperIndex / 3, g = c.helperIndex % 3, col = g * 3 + (int)c.kind;
-                float x = x0 + col * (w + ColumnGap) + g * (GroupGap - ColumnGap);
-                float halfThick = c.prefab.GetComponent<BoxCollider>().size.y * 0.5f;
-
-                var card = (GameObject)PrefabUtility.InstantiatePrefab(c.prefab, group);
-                card.transform.localPosition = new Vector3(x, halfThick + 0.001f, rowZ[row]);
-                card.transform.localRotation = Quaternion.identity;
-            }
-
-            if (rowWidth > MainMenuSceneBuilder.TableSize.x)
-                Debug.LogWarning("[CardDesignsBuilder] The card rows are wider than the table; lower CardLength.");
-            Debug.Log($"[CardDesignsBuilder] Placed {cards.Count} cards on the table.");
-            return group;
-        }
-
-        /// <summary>The generated table top is decor-only (no collider), so physics cards would fall through it.</summary>
-        private static void EnsureTableCollider(Transform table)
-        {
-            var top = table.Find("Top");
-            if (top != null && top.GetComponent<Collider>() == null) top.gameObject.AddComponent<BoxCollider>();
-        }
-
         // ------------------------------------------------------------------ Prefabs
 
-        private static List<BuiltCard> BuildAllPrefabs()
+        public static List<BuiltCard> BuildAllPrefabs()
         {
             EnsureFolder(PrefabDir);
             var built = new List<BuiltCard>();
@@ -177,7 +130,7 @@ namespace CommunityHelpers.EditorTools
                 grabbable.InjectOptionalKinematicWhileSelected(true);
                 grabbable.InjectOptionalThrowWhenUnselected(true);
 
-                root.AddComponent<CardScript>();
+                root.AddComponent<CardScript>().cardCategory = Category(helper, kind);
 
                 // Same setup the HandGrab building block gives Van's test card: controller + hand grabs.
                 var grab = new GameObject("Grab");

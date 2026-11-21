@@ -122,27 +122,27 @@ Each step ends with a **headset check-in** before the next one starts.
 ### Step 4: Navigation and flow 🔨 in progress (branch `Main-Menu-Step-4`)
 
 ```
-Main ──Play / Quick play──▶ Who are you today? ──Let's go!──▶ Game scene (placeholder)
- │ ▲                               │                               │
- │ └───────────── Back ────────────┘◀──────── Back to menu ────────┘
- ├──How to play──▶ How to play (placeholder) ──Back──▶ Main
+Main ──Play / Quick play──▶ Dress up Robo! ──Let's go!──▶ High five! ──(touch Robo's hand)──▶ Game scene
+ │ ▲                          │                      │                                        │
+ │ └─────────── Back ─────────┘ ◀──────── Back ───────┘                                        │
+ │ ◀──────────────────────────────── Home (on the table) ────────────────────────────────────┘
+ ├──How to play──▶ How to play ──Back──▶ Main
  └──Settings────▶ Settings ──Back──▶ Main      (Quit closes the app)
 ```
 
 - **Panels on one easel:** all menu screens live on the same board. Opening one shrinks the current panel out and pops the new one in (about 0.35 s, buttons blocked meanwhile). The board itself never moves. Every sub-panel has a Back button that returns to Main.
-- **Play / Quick play** set the mode (Full = 6 helpers, Quick = 3) and open **Who are you today?**
-  - Four animal buttons (Fox, Bear, Owl, Bunny) with simple 3D faces (`Editor/AnimalFaces.cs`, placeholders for real art).
-  - The picked animal stays glowing and slightly bigger, and Robo nods.
-  - **Let's go!** is grayed out until an animal is picked. It fades the screen and loads the **Game** scene.
-- **Game scene (placeholder):** one scene for both modes. `GameSession` carries the mode and animal.
-  - Same room, town and Robo, with a confetti burst on load.
-  - The easel only says **"Play"** or **"Quick play"** and "This is where the game will be played, on the table", plus **Back to menu**.
-  - The real game will be played on the table. The team replaces this board when it's ready.
+- **Play / Quick play** set the mode (Full = 6 helpers, Quick = 3) and open **Dress up Robo!** (team call, Nov 17: this replaced the "Who are you today?" animal picker).
+  - Four hat buttons, each showing its hat: **Firefighter** (red helmet), **Police** (navy cap), **Mail carrier** (blue cap), **Doctor** (head mirror).
+  - Picking one drops that hat onto Robo's head with a spin, and he nods (`RoboDressUp`). The picked button stays glowing.
+  - **Let's go!** is grayed out until Robo has a hat.
+- **High five!** After Let's go!, Robo hops to the front of the table (within reach, about 0.4 m from the seat), turns to the player and holds up his hand, which glows. When either hand or controller touches it (within 14 cm), Robo jumps and the **Game** scene loads (`RoboHighFive`). This also warms the player up for reaching out to touch things, which is how cards are picked up. **Back** takes Robo home and returns to the hats.
+- **Game scene:** one scene for both modes. `GameSession` carries the mode and Robo's hat, and Robo wears the hat in the game.
+  - Same room, town and Robo, with a confetti burst on load. There's no easel: the game, its progress and the end of the round are all on the table (see [GameTable.md](GameTable.md)).
 - **Settings:**
   - Volume − / + with 5 dots (applied with `AudioListener.volume`, saved in PlayerPrefs by `GameSettings`).
   - **Re-center view:** puts the table, menu and Robo back in front of the player (for when a kid shifts in the seat or turns around). Robo waves.
   - A grown-ups note, **Back**, and **Quit**.
-- **How to play (placeholder):** three picture cards ("Ask for a helper card", "Match helpers with their things", "Most matches wins!") and Back. The pictures are plain card shapes and a star.
+- **How to play:** three picture cards that match the real game ("Pick up a card from the deck.", "Put it with its helper.", "Fill all the stars!"), a tip ("Wrong card? A helper at the window will give you a hint!") and Back. To update it in an existing menu scene: **Community Helpers → Update Main Menu (Robo, How to Play, People)**.
   - When a real tutorial exists, point this button at a Tutorial scene instead.
 - **Helper icons appear only on the main menu** (the Play and Quick play buttons), because the final helper art isn't decided yet.
 - **Screen fades:** `ScreenFader` (a cream quad in front of the camera) fades in when a scene starts and out before loading the next. There's no camera motion.
@@ -152,11 +152,12 @@ Main ──Play / Quick play──▶ Who are you today? ──Let's go!──�
   | Key | Does |
   |---|---|
   | 1–4 | Main buttons |
-  | F / B / O / N | Pick Fox / Bear / Owl / Bunny |
+  | F / P / M / D | Put the Fire helmet / Police cap / Mail cap / Doctor's mirror on Robo |
   | Enter | Let's go! |
-  | Backspace | Back (or Back to menu in the Game scene) |
+  | Space | High-five Robo |
+  | Backspace | Back (or back to the menu in the Game scene) |
 
-**Check-in:** Does every button go to the right place, and does Back always return to Main? Is the animal picker easy for kids (big enough, clear which one is picked)? Do the fades feel comfortable? Do settings stick after restarting?
+**Check-in:** Does every button go to the right place, and does Back always return where you'd expect? Are the hat buttons easy for kids (big enough, clear which one is picked)? Can a seated child reach Robo's raised hand? Do the fades feel comfortable? Do settings stick after restarting?
 
 ### Step 5: Polish ⏳
 
@@ -218,12 +219,12 @@ Btn_<Name>       KidButton3D, PokeInteractable, RayInteractable
 | Plane speed, height, loop size (`halfWidth` = where it turns around) | `PlaneFlyby` on **HelperTown/SkyLife** (Inspector); height in `BuildPlane` | `speed`, `halfWidth`, `turnRadius`, `bankDegrees` |
 | Traffic speed, how often cars come, which cars | `StreetTraffic` on **HelperTown/Traffic** (Inspector); car list in `BuildTraffic` | `speed`, `secondsBetweenCars`, `minGap` |
 | Menu flow (what each button opens, Back behavior, scene names) | `Scripts/Menu/MainMenuController.cs` | `OnPlay`, `OnLetsGo`, `gameScene` |
-| Animal picker, Settings and How to play panels (layout, labels) | `Editor/MenuPanelsBuilder.cs` | |
-| Animal faces | `Editor/AnimalFaces.cs` | |
+| Dress up Robo!, High five!, Settings and How to play panels (layout, labels) | `Editor/MenuPanelsBuilder.cs` | |
+| Robo's hats (shapes, colors), the high-five glow, where Robo waits for the high five | `Editor/RoboHatsBuilder.cs` | `BuildHat`, `HighFiveSpot` |
+| How close a hand has to get for a high five, hop speed | `RoboHighFive` on **Robo** (Inspector) | `touchRadius`, `hopTime` |
 | Saved settings (volume) | `Scripts/GameSettings.cs` | |
-| What carries into the game (mode, animal) | `Scripts/GameSession.cs` | |
-| Placeholder Game scene board | `Editor/GameBoardBuilder.cs`, `Scripts/Menu/GameSceneController.cs` | |
-| Fade color and timing | `ScreenFader` on **CenterEyeAnchor/ScreenFader** (Inspector); color in `AddScreenFader` | `fadeInOnStart`, `fadeOut` || Animal picker, Settings and How to play panels (layout, labels) | `Editor/MenuPanelsBuilder.cs` | || Animal faces | `Editor/AnimalFaces.cs` | || Saved settings (volume) | `Scripts/GameSettings.cs` | || What carries into the game (mode, animal) | `Scripts/GameSession.cs` | || Placeholder Game scene board | `Editor/GameBoardBuilder.cs`, `Scripts/Menu/GameSceneController.cs` | || Fade color and timing | `ScreenFader` on **CenterEyeAnchor/ScreenFader** (Inspector); color in `AddScreenFader` | `fadeInOnStart`, `fadeOut` |
+| What carries into the game (mode, Robo's hat) | `Scripts/GameSession.cs` | |
+| Fade color and timing | `ScreenFader` on **CenterEyeAnchor/ScreenFader** (Inspector); color in `AddScreenFader` | `fadeInOnStart`, `fadeOut` |
 | Button layout, labels, icons, helper chips | `Editor/MenuBoardBuilder.cs` → `Build` | |
 | Button feel (press depth, glow, buzz, debounce) | `KidButton3D` (Inspector, or defaults in `Scripts/Menu/KidButton3D.cs`) | |
 | Colors | `Scripts/UIColors.cs` | |

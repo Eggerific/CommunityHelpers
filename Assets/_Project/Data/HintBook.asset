@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2869a48b08923dd4faac40c79b7ba6fc, type: 3}
+  m_Name: HintBook
+  m_EditorClassIdentifier: Assembly-CSharp::CommunityHelpers.HintBook
+  showText: 0
+  placeholder: ...
+  entries:
+  - card: Firefighter/Tool
+    clue: I spray water on fires with this!
+    helpingHand: That's my hose! Put it with me, the firefighter.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: Firefighter/Workplace
+    clue: My big red fire truck waits here!
+    helpingHand: That's my fire station! Put it with the firefighter.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: Doctor/Tool
+    clue: I listen to your heartbeat with this!
+    helpingHand: That's my stethoscope! Put it with me, the doctor.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: Doctor/Workplace
+    clue: I help sick people feel better here!
+    helpingHand: That's my hospital! Put it with the doctor.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: Librarian/Tool
+    clue: I help kids find stories like this!
+    helpingHand: That's my book! Put it with me, the librarian.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: Librarian/Workplace
+    clue: I work where the shelves are full of books!
+    helpingHand: That's my library! Put it with the librarian.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: PoliceOfficer/Tool
+    clue: I wear this to show I keep you safe!
+    helpingHand: That's my badge! Put it with me, the police officer.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: PoliceOfficer/Workplace
+    clue: I go here to start my day keeping people safe!
+    helpingHand: That's my police station! Put it with the police officer.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: Teacher/Tool
+    clue: I write lessons on this for my class!
+    helpingHand: That's my whiteboard! Put it with me, the teacher.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: Teacher/Workplace
+    clue: Kids come here to learn with me!
+    helpingHand: That's my school! Put it with the teacher.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: MailCarrier/Tool
+    clue: I carry letters to your house in this!
+    helpingHand: That's my mailbag! Put it with me, the mail carrier.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
+  - card: MailCarrier/Workplace
+    clue: All the letters get sorted here!
+    helpingHand: That's my post office! Put it with the mail carrier.
+    clueVoice: {fileID: 0}
+    helpingHandVoice: {fileID: 0}
