@@ -1,15 +1,16 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace CommunityHelpers
 {
     /// <summary>
     /// Main menu flow. All screens are panels on the same easel board; only one shows at a time.
     ///
-    ///   Main ──Play / Quick play──▶ Who are you today? ──Let's go!──▶ Game scene
-    ///    │ ▲                              │
-    ///    │ └──────────── Back ────────────┘
+    ///   Main ──Play / Quick play──▶ Dress up Robo! ──Let's go!──▶ High five! ──(touch Robo's hand)──▶ Game scene
+    ///    │ ▲                          │                      │
+    ///    │ └─────────── Back ─────────┘ ◀──────── Back ───────┘
     ///    ├──How to play──▶ How to play ──Back──▶ Main
     ///    └──Settings────▶ Settings ─────Back──▶ Main   (Quit closes the app)
     ///
@@ -17,7 +18,7 @@ namespace CommunityHelpers
     /// </summary>
     public class MainMenuController : MonoBehaviour
     {
-        private enum MenuScreen { Main, PickAnimal, Settings, HowToPlay }
+        private enum MenuScreen { Main, DressUp, HighFive, Settings, HowToPlay }
 
         [Tooltip("The menu board that pops in when the scene starts.")]
         [SerializeField] private Transform board;
@@ -26,7 +27,9 @@ namespace CommunityHelpers
 
         [Header("Panels (one shows at a time)")]
         [SerializeField] private Transform panelMain;
-        [SerializeField] private Transform panelPickAnimal;
+        [FormerlySerializedAs("panelPickAnimal")]
+        [SerializeField] private Transform panelDressUp;
+        [SerializeField] private Transform panelHighFive;
         [SerializeField] private Transform panelSettings;
         [SerializeField] private Transform panelHowToPlay;
         [SerializeField] private float swapOut = 0.15f;
@@ -38,9 +41,10 @@ namespace CommunityHelpers
         [SerializeField] private KidButton3D howToPlayButton;
         [SerializeField] private KidButton3D settingsButton;
 
-        [Header("Who are you today?")]
-        [Tooltip("Fox, Bear, Owl, Bunny (same order as GameSession.Buddy).")]
-        [SerializeField] private KidButton3D[] animalButtons;
+        [Header("Dress up Robo!")]
+        [Tooltip("Firefighter, Police, Mail carrier, Doctor (same order as GameSession.RoboHat).")]
+        [FormerlySerializedAs("animalButtons")]
+        [SerializeField] private KidButton3D[] hatButtons;
         [SerializeField] private KidButton3D letsGoButton;
 
         [Header("Settings")]
@@ -51,19 +55,21 @@ namespace CommunityHelpers
         [Header("Reactions")]
         [SerializeField] private RoboController robo;
         [SerializeField] private TitleSignAnimator titleSign;
+        [SerializeField] private RoboDressUp dressUp;
+        [SerializeField] private RoboHighFive highFive;
 
         [Header("Scenes")]
         [SerializeField] private string gameScene = "Game";
 
         private MenuScreen _screen = MenuScreen.Main;
-        private int _pickedAnimal = -1;
+        private int _pickedHat = -1;
         private bool _swapping;
 
         private IEnumerator Start()
         {
             ShowOnly(panelMain);
             RefreshSettings();
-            ResetAnimalPick();
+            ResetHatPick();
 
             if (board == null) yield break;
             Vector3 full = board.localScale;
@@ -95,9 +101,10 @@ namespace CommunityHelpers
         private void StartPick(GameSession.GameMode mode)
         {
             GameSession.Mode = mode;
-            ResetAnimalPick();
+            ResetHatPick();
+            if (dressUp) dressUp.Wear(-1, animate: false);
             if (robo) robo.DoCheer(RoboController.Cheer.Jump);
-            Go(MenuScreen.PickAnimal);
+            Go(MenuScreen.DressUp);
         }
 
         public void OnHowToPlay()
@@ -115,32 +122,49 @@ namespace CommunityHelpers
         /// <summary>Every sub-panel's Back button returns to Main.</summary>
         public void OnBack() => Go(MenuScreen.Main);
 
-        // ---------------------------------------------------------------- Who are you today?
+        // ---------------------------------------------------------------- Dress up Robo! and the high five
 
-        public void OnPickAnimal(int index)
+        /// <summary>Puts hat <paramref name="index"/> on Robo (he nods) and lights up Let's go!</summary>
+        public void OnPickHat(int index)
         {
-            _pickedAnimal = index;
-            for (int i = 0; i < animalButtons.Length; i++)
-                if (animalButtons[i]) animalButtons[i].SetSelected(i == index);
+            _pickedHat = index;
+            for (int i = 0; i < hatButtons.Length; i++)
+                if (hatButtons[i]) hatButtons[i].SetSelected(i == index);
             if (letsGoButton) letsGoButton.Interactable = true;
-            if (robo) robo.DoCheer(RoboController.Cheer.Yes);
+            if (dressUp) dressUp.Wear(index);
+            else if (robo) robo.DoCheer(RoboController.Cheer.Yes);
         }
 
+        /// <summary>Let's go! Robo hops over and holds up his hand; the game starts when the player high-fives him.</summary>
         public void OnLetsGo()
         {
-            if (_pickedAnimal < 0) return;
-            GameSession.Animal = (GameSession.Buddy)_pickedAnimal;
-            Debug.Log($"[MainMenu] Starting {GameSession.Mode} game ({GameSession.HelperCount} helpers) as {GameSession.Animal}.");
-            if (robo) robo.DoCheer(RoboController.Cheer.Jump);
-            ScreenFader.LoadScene(gameScene);
+            if (_pickedHat < 0) return;
+            GameSession.Hat = (GameSession.RoboHat)_pickedHat;
+            Debug.Log($"[MainMenu] {GameSession.Mode} game ({GameSession.HelperCount} helpers), Robo wears the {GameSession.Hat} hat.");
+            if (highFive == null)
+            {
+                StartGame();
+                return;
+            }
+            Go(MenuScreen.HighFive);
+            highFive.Begin(StartGame);
         }
 
-        private void ResetAnimalPick()
+        /// <summary>Back from the high five: Robo lowers his hand and hops home; the hats are still there to change.</summary>
+        public void OnBackToDressUp()
         {
-            _pickedAnimal = -1;
-            if (animalButtons != null)
-                foreach (var b in animalButtons) if (b) b.SetSelected(false);
-            if (letsGoButton) letsGoButton.Interactable = false; // grayed out until an animal is picked
+            if (highFive) highFive.Cancel();
+            Go(MenuScreen.DressUp);
+        }
+
+        private void StartGame() => ScreenFader.LoadScene(gameScene);
+
+        private void ResetHatPick()
+        {
+            _pickedHat = -1;
+            if (hatButtons != null)
+                foreach (var b in hatButtons) if (b) b.SetSelected(false);
+            if (letsGoButton) letsGoButton.Interactable = false; // grayed out until Robo has a hat
         }
 
         // ---------------------------------------------------------------- Settings
@@ -178,7 +202,8 @@ namespace CommunityHelpers
 
         private Transform PanelFor(MenuScreen s) => s switch
         {
-            MenuScreen.PickAnimal => panelPickAnimal,
+            MenuScreen.DressUp => panelDressUp,
+            MenuScreen.HighFive => panelHighFive,
             MenuScreen.Settings => panelSettings,
             MenuScreen.HowToPlay => panelHowToPlay,
             _ => panelMain,
@@ -224,7 +249,7 @@ namespace CommunityHelpers
 
         private void ShowOnly(Transform panel)
         {
-            foreach (var p in new[] { panelMain, panelPickAnimal, panelSettings, panelHowToPlay })
+            foreach (var p in new[] { panelMain, panelDressUp, panelHighFive, panelSettings, panelHowToPlay })
                 if (p != null) p.gameObject.SetActive(p == panel);
             _screen = MenuScreen.Main;
         }
@@ -233,8 +258,8 @@ namespace CommunityHelpers
         private void Update()
         {
             // Editor shortcuts for testing without the headset:
-            // 1-4 = Play / Quick play / How to play / Settings, F/B/O/N = pick Fox/Bear/Owl/Bunny,
-            // Enter = Let's go!, Backspace = Back.
+            // 1-4 = Play / Quick play / How to play / Settings. Dress up: F/P/M/D = fire helmet / police cap /
+            // mail cap / doctor's mirror, Enter = Let's go!. High five: Space (RoboHighFive). Backspace = Back.
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null) return;
             if (_screen == MenuScreen.Main)
@@ -244,14 +269,18 @@ namespace CommunityHelpers
                 if (kb.digit3Key.wasPressedThisFrame && howToPlayButton) howToPlayButton.PressFromCode();
                 if (kb.digit4Key.wasPressedThisFrame && settingsButton) settingsButton.PressFromCode();
             }
-            else if (kb.backspaceKey.wasPressedThisFrame) OnBack();
-
-            if (_screen == MenuScreen.PickAnimal)
+            else if (kb.backspaceKey.wasPressedThisFrame)
             {
-                if (kb.fKey.wasPressedThisFrame) OnPickAnimal(0);
-                if (kb.bKey.wasPressedThisFrame) OnPickAnimal(1);
-                if (kb.oKey.wasPressedThisFrame) OnPickAnimal(2);
-                if (kb.nKey.wasPressedThisFrame) OnPickAnimal(3);
+                if (_screen == MenuScreen.HighFive) OnBackToDressUp();
+                else OnBack();
+            }
+
+            if (_screen == MenuScreen.DressUp)
+            {
+                if (kb.fKey.wasPressedThisFrame) OnPickHat(0);
+                if (kb.pKey.wasPressedThisFrame) OnPickHat(1);
+                if (kb.mKey.wasPressedThisFrame) OnPickHat(2);
+                if (kb.dKey.wasPressedThisFrame) OnPickHat(3);
                 if (kb.enterKey.wasPressedThisFrame && letsGoButton) letsGoButton.PressFromCode();
             }
         }

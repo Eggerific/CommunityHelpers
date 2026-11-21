@@ -81,6 +81,8 @@ namespace CommunityHelpers.EditorTools
             var mso = new SerializedObject(menu);
             mso.FindProperty("robo").objectReferenceValue = robo;
             mso.FindProperty("titleSign").objectReferenceValue = titleSign;
+            mso.FindProperty("dressUp").objectReferenceValue = RoboHatsBuilder.AddHats(robo.transform, wearSessionHat: false);
+            mso.FindProperty("highFive").objectReferenceValue = RoboHatsBuilder.AddHighFive(robo.transform);
             mso.ApplyModifiedPropertiesWithoutUndo();
 
             // Confetti belongs to the game starting, not the menu.
@@ -88,14 +90,61 @@ namespace CommunityHelpers.EditorTools
             tso.FindProperty("confettiAtStart").floatValue = -1f;
             tso.ApplyModifiedPropertiesWithoutUndo();
 
+            TownPeopleBuilder.Build(table, game: false); // a few helpers strolling past the window
             Save(scene, ScenePath, rig);
+        }
+
+        /// <summary>
+        /// Updates the existing Main Menu scene in place (keeps hand-made changes): the How to play panel,
+        /// "Dress up Robo!" and "High five!" (with Robo's hats and high-five glow), and the helpers strolling
+        /// outside the window.
+        /// </summary>
+        [MenuItem("Community Helpers/Update Main Menu (Robo, How to Play, People)", priority = 4)]
+        public static void UpdateMenuScene()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            string previousScene = EditorSceneManager.GetActiveScene().path;
+            var scene = EditorSceneManager.OpenScene(ScenePath);
+
+            var controller = Object.FindFirstObjectByType<MainMenuController>();
+            if (controller != null)
+            {
+                MenuPanelsBuilder.RebuildHowToPlay(controller);
+                MenuPanelsBuilder.RebuildDressUp(controller);
+                var robo = Object.FindFirstObjectByType<RoboController>();
+                if (robo != null)
+                {
+                    var mso = new SerializedObject(controller);
+                    mso.FindProperty("dressUp").objectReferenceValue = RoboHatsBuilder.AddHats(robo.transform, wearSessionHat: false);
+                    mso.FindProperty("highFive").objectReferenceValue = RoboHatsBuilder.AddHighFive(robo.transform);
+                    mso.ApplyModifiedPropertiesWithoutUndo();
+                }
+                else Debug.LogError("[MainMenuSceneBuilder] No Robo in " + ScenePath);
+            }
+            else Debug.LogError("[MainMenuSceneBuilder] No MainMenuController in " + ScenePath);
+
+            var table = GameObject.Find("World/Table");
+            if (table != null) TownPeopleBuilder.Build(table.transform, game: false);
+            else Debug.LogError("[MainMenuSceneBuilder] No World/Table in " + ScenePath);
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            if (!string.IsNullOrEmpty(previousScene) && previousScene != ScenePath)
+                EditorSceneManager.OpenScene(previousScene);
+        }
+
+        /// <summary>Command line (Unity closed): -executeMethod CommunityHelpers.EditorTools.MainMenuSceneBuilder.UpdateMenuSceneAndExit</summary>
+        public static void UpdateMenuSceneAndExit()
+        {
+            UpdateMenuScene();
+            AssetDatabase.SaveAssets();
+            EditorApplication.Exit(0);
         }
 
         private static void BuildGameScene()
         {
-            var scene = NewSceneWithWorld(out var rig, out var world, out var table, out var robo, out _);
-            GameBoardBuilder.Build(table, TableCenterZ, robo);
-            GameTableBuilder.Apply(table); // card designs in front of the player, Robo moved back
+            var scene = NewSceneWithWorld(out var rig, out var world, out var table, out _, out _);
+            GameTableBuilder.Apply(table); // cards, the progress easel, Robo moved back
             Save(scene, GameScenePath, rig); // the title sign pops confetti when the game loads
         }
 

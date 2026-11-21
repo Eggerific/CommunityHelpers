@@ -10,7 +10,7 @@ namespace CommunityHelpers.EditorTools
 {
     /// <summary>
     /// Step 4: the menu screens besides Main, as panels on the same easel board (hidden until opened):
-    /// "Who are you today?" (animal picker + Let's go!), Settings, and How to play (placeholder).
+    /// "Dress up Robo!" (hats + Let's go!), "High five!", Settings, and How to play.
     /// Layout is in design-panel units (0.62 x 0.42, center = 0,0), same as Panel_Main.
     /// </summary>
     public static class MenuPanelsBuilder
@@ -22,34 +22,62 @@ namespace CommunityHelpers.EditorTools
         };
         internal static readonly Vector2[] PlayTriangle = { new(-0.4f, -0.5f), new(0.6f, 0f), new(-0.4f, 0.5f) };
 
-        private static readonly (GameSession.Buddy kind, string name, Color32 color)[] Animals =
-        {
-            (GameSession.Buddy.Fox, "Fox", UIColors.Coral),
-            (GameSession.Buddy.Bear, "Bear", UIColors.Bear),
-            (GameSession.Buddy.Owl, "Owl", UIColors.Violet),
-            (GameSession.Buddy.Bunny, "Bunny", UIColors.Sky),
-        };
+        // Hat button colors, in GameSession.RoboHat order (firefighter, police, mail carrier, doctor).
+        private static readonly Color32[] HatColors = { UIColors.Coral, UIColors.Sky, UIColors.Violet, UIColors.Teal };
 
         public static void Build(Transform board, MainMenuController controller)
         {
-            var pick = BuildPickAnimal(board, controller, out var animalButtons, out var letsGo);
+            var dressUp = BuildDressUp(board, controller, out var hatButtons, out var letsGo);
+            var highFive = BuildHighFive(board, controller);
             var settings = BuildSettings(board, controller, out var dots, out var dotOn, out var dotOff);
             var howTo = BuildHowToPlay(board, controller);
 
             var so = new SerializedObject(controller);
-            so.FindProperty("panelPickAnimal").objectReferenceValue = pick;
+            so.FindProperty("panelDressUp").objectReferenceValue = dressUp;
+            so.FindProperty("panelHighFive").objectReferenceValue = highFive;
             so.FindProperty("panelSettings").objectReferenceValue = settings;
             so.FindProperty("panelHowToPlay").objectReferenceValue = howTo;
-            SetArray(so.FindProperty("animalButtons"), animalButtons);
+            SetArray(so.FindProperty("hatButtons"), hatButtons);
             so.FindProperty("letsGoButton").objectReferenceValue = letsGo;
             SetArray(so.FindProperty("volumeDots"), dots);
             so.FindProperty("dotOn").objectReferenceValue = dotOn;
             so.FindProperty("dotOff").objectReferenceValue = dotOff;
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            pick.gameObject.SetActive(false);
+            dressUp.gameObject.SetActive(false);
+            highFive.gameObject.SetActive(false);
             settings.gameObject.SetActive(false);
             howTo.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// Replaces the "Who are you today?" (or an older "Dress up Robo!") panel and the High five panel in an
+        /// existing Main Menu scene, and rewires the controller. Used by "Update Main Menu".
+        /// </summary>
+        internal static void RebuildDressUp(MainMenuController controller)
+        {
+            var so = new SerializedObject(controller);
+            var dressProp = so.FindProperty("panelDressUp");
+            var highProp = so.FindProperty("panelHighFive");
+            var old = dressProp.objectReferenceValue as Transform;
+            Transform board = old != null ? old.parent : null;
+            if (board == null)
+            {
+                Debug.LogError("[MenuPanelsBuilder] Couldn't find the old animal picker / dress-up panel to replace.");
+                return;
+            }
+            Object.DestroyImmediate(old.gameObject);
+            if (highProp.objectReferenceValue is Transform oldHigh && oldHigh != null) Object.DestroyImmediate(oldHigh.gameObject);
+
+            var dressUp = BuildDressUp(board, controller, out var hatButtons, out var letsGo);
+            var highFive = BuildHighFive(board, controller);
+            dressProp.objectReferenceValue = dressUp;
+            highProp.objectReferenceValue = highFive;
+            SetArray(so.FindProperty("hatButtons"), hatButtons);
+            so.FindProperty("letsGoButton").objectReferenceValue = letsGo;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            dressUp.gameObject.SetActive(false);
+            highFive.gameObject.SetActive(false);
         }
 
         /// <summary>A blank playing card (white border, colored middle), tilted a little. Stands in for card art.</summary>
@@ -112,26 +140,33 @@ namespace CommunityHelpers.EditorTools
             return btn;
         }
 
-        // ------------------------------------------------------------------ Who are you today?
+        // ------------------------------------------------------------------ Dress up Robo! / High five
 
-        private static Transform BuildPickAnimal(Transform board, MainMenuController controller,
-            out List<KidButton3D> animalButtons, out KidButton3D letsGo)
+        /// <summary>
+        /// "Dress up Robo!": four hat buttons (each shows its hat) and Let's go! (grayed out until a hat is on).
+        /// Picking a hat drops it onto Robo's head (RoboDressUp).
+        /// </summary>
+        private static Transform BuildDressUp(Transform board, MainMenuController controller,
+            out List<KidButton3D> hatButtons, out KidButton3D letsGo)
         {
             var semi = FontSetup.Load(FontSetup.FredokaSemiBold);
-            var panel = B.NewPanel("Panel_PickAnimal", board);
-            Title(panel, "Who are you today?");
+            var panel = B.NewPanel("Panel_DressUp", board);
+            Title(panel, "Dress up Robo!");
 
-            animalButtons = new List<KidButton3D>();
+            hatButtons = new List<KidButton3D>();
             const float w = 0.125f, h = 0.165f, spacing = 0.135f, y = 0.03f;
-            for (int i = 0; i < Animals.Length; i++)
+            for (int i = 0; i < RoboHatsBuilder.HatNames.Length; i++)
             {
-                var (kind, name, color) = Animals[i];
+                string name = RoboHatsBuilder.HatNames[i];
                 float x = (i - 1.5f) * spacing;
-                var btn = B.MakeButton($"Btn_{name}", panel, new Vector2(x, y), new Vector2(w, h), color, out var c);
-                AnimalFaces.Build(c, kind, new Vector2(0, 0.018f), 0.04f);
-                B.Label(c, name, semi, 0.026f, UIColors.Cream, new Vector2(0, -0.058f), w);
-                UnityEventTools.AddIntPersistentListener(btn.onPressed, new UnityAction<int>(controller.OnPickAnimal), i);
-                animalButtons.Add(btn);
+                var btn = B.MakeButton($"Btn_Hat_{name.Replace(" ", "")}", panel, new Vector2(x, y), new Vector2(w, h), HatColors[i], out var c);
+                RoboHatsBuilder.ButtonHat(i, c, new Vector2(0, 0.022f), 0.085f);
+                var label = B.Label(c, name, semi, 0.024f, UIColors.Cream, new Vector2(0, -0.058f), w - 0.012f);
+                label.enableAutoSizing = true; // "Mail carrier" is the longest
+                label.fontSizeMin = 0.14f;
+                label.fontSizeMax = 0.24f;
+                UnityEventTools.AddIntPersistentListener(btn.onPressed, new UnityAction<int>(controller.OnPickHat), i);
+                hatButtons.Add(btn);
             }
 
             letsGo = B.MakeButton("Btn_LetsGo", panel, new Vector2(-0.02f, -0.14f), new Vector2(0.28f, 0.085f), UIColors.YayButton, out var lc);
@@ -141,6 +176,30 @@ namespace CommunityHelpers.EditorTools
 
             var back = BackButton(panel, new Vector2(0.235f, -0.14f), new Vector2(0.1f, 0.085f), text: null);
             On(back, controller.OnBack);
+            return panel;
+        }
+
+        /// <summary>
+        /// "High five!": shown while Robo stands at the front of the table with his hand up. A big arrow points
+        /// right, toward Robo. Back (bottom left, away from Robo) goes back to the hats.
+        /// </summary>
+        private static Transform BuildHighFive(Transform board, MainMenuController controller)
+        {
+            var bold = FontSetup.Load(FontSetup.FredokaBold);
+            var andika = FontSetup.Load(FontSetup.AndikaRegular);
+            var panel = B.NewPanel("Panel_HighFive", board);
+
+            B.Label(panel, "High five!", bold, 0.07f, UIColors.Ink, new Vector2(-0.04f, 0.1f), 0.45f);
+            Text3D("Note", panel, "Touch Robo's glowing hand to start!", andika, 0.03f, UIColors.Ink,
+                new Vector3(-0.04f, 0.015f, -0.0005f), new Vector2(0.42f, 0.09f));
+
+            // Arrow pointing right, toward Robo (the back arrow, mirrored).
+            var arrow = new Vector2[BackArrow.Length];
+            for (int i = 0; i < arrow.Length; i++) arrow[i] = new Vector2(-BackArrow[BackArrow.Length - 1 - i].x, BackArrow[BackArrow.Length - 1 - i].y);
+            B.Icon("HighFiveArrow", panel, arrow, 0.045f, UIColors.Sun, new Vector2(0.23f, 0.05f));
+
+            var back = BackButton(panel, new Vector2(-0.2f, -0.15f), new Vector2(0.18f, 0.075f));
+            On(back, controller.OnBackToDressUp);
             return panel;
         }
 
@@ -200,8 +259,34 @@ namespace CommunityHelpers.EditorTools
             return panel;
         }
 
-        // ------------------------------------------------------------------ How to play (placeholder)
+        // ------------------------------------------------------------------ How to play
 
+        /// <summary>
+        /// Replaces the How to play panel in an existing Main Menu scene (keeps everything else).
+        /// Used by MainMenuSceneBuilder's "Update Main Menu".
+        /// </summary>
+        internal static void RebuildHowToPlay(MainMenuController controller)
+        {
+            var so = new SerializedObject(controller);
+            var prop = so.FindProperty("panelHowToPlay");
+            var old = prop.objectReferenceValue as Transform;
+            Transform board = old != null ? old.parent : null;
+            if (board == null)
+            {
+                Debug.LogError("[MenuPanelsBuilder] Couldn't find the How to play panel to replace.");
+                return;
+            }
+            Object.DestroyImmediate(old.gameObject);
+            var panel = BuildHowToPlay(board, controller);
+            prop.objectReferenceValue = panel;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            panel.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// Three steps that match the real game (Nov 17): pick up a card from the deck, put it with its helper,
+        /// fill all the stars. A tip below says a helper at the window helps with wrong cards.
+        /// </summary>
         private static Transform BuildHowToPlay(Transform board, MainMenuController controller)
         {
             var semi = FontSetup.Load(FontSetup.FredokaSemiBold);
@@ -212,7 +297,7 @@ namespace CommunityHelpers.EditorTools
             var cardMat = Mat("Lilac", UIColors.Lilac, 0.3f);
             var sun = Mat("Sun", UIColors.Sun, 0.4f);
             var cardMesh = MeshKit.RoundedSlab("HowTo_Card", 0.17f, 0.19f, 0.004f, 0.025f);
-            string[] steps = { "Ask for a helper card.", "Match helpers with their things.", "Most matches wins!" };
+            string[] steps = { "Pick up a card from the deck.", "Put it with its helper.", "Fill all the stars!" };
             for (int i = 0; i < 3; i++)
             {
                 float x = (i - 1) * 0.19f;
@@ -222,34 +307,62 @@ namespace CommunityHelpers.EditorTools
                 Cyl("Badge", card, new Vector3(-0.06f, 0.07f, -0.006f), 0.018f, 0.004f, sun, new Vector3(90, 0, 0));
                 B.Label(card, (i + 1).ToString(), semi, 0.026f, UIColors.Ink, new Vector2(-0.06f, 0.07f), 0.03f)
                     .transform.localPosition += new Vector3(0, 0, -0.008f); // in front of the badge
-                // Picture (placeholder): plain card shapes / a star. No helper art here; the real art isn't decided yet.
+
                 var pic = Group("Picture", card, new Vector3(0, 0.02f, -0.004f));
-                if (i == 0) PlainCard(pic, Vector2.zero, -8f, UIColors.Sky);
+                if (i == 0)
+                {
+                    // The deck (face-down, gold backs like the DRAW pile) with the top card lifted off.
+                    PlainCard(pic, new Vector2(-0.012f, -0.008f), 0f, UIColors.CardHelper);
+                    PlainCard(pic, new Vector2(-0.009f, -0.005f), 0f, UIColors.CardHelper);
+                    var lifted = Group("Lifted", pic, new Vector3(0.022f, 0.012f, -0.004f));
+                    PlainCard(lifted, Vector2.zero, -14f, UIColors.CardTool);
+                }
                 else if (i == 1)
                 {
-                    PlainCard(pic, new Vector2(-0.024f, 0), 8f, UIColors.Coral);
-                    PlainCard(pic, new Vector2(0.024f, 0), -8f, UIColors.Coral);
+                    // A helper card with its tool card stacked on it, like a lane on the table, and a check.
+                    PlainCard(pic, new Vector2(0f, -0.012f), 0f, UIColors.Coral);
+                    var onTop = Group("OnTop", pic, new Vector3(0f, 0.01f, -0.003f));
+                    PlainCard(onTop, Vector2.zero, 0f, UIColors.CardTool);
+                    Cyl("CheckDisc", pic, new Vector3(0.028f, 0.03f, -0.008f), 0.012f, 0.003f, Mat("Yay", UIColors.Yay), new Vector3(90, 0, 0));
+                    var mark = Group("Check", pic, new Vector3(0.028f, 0.03f, -0.0095f));
+                    B.Icon("HowTo_Check", mark, CheckMark, 0.011f, UIColors.Cream, Vector2.zero);
                 }
                 else
                 {
-                    var star = new List<Vector2>();
-                    for (int k = 0; k < 10; k++)
+                    // A row of stars, like the star track on the table.
+                    for (int k = 0; k < 3; k++)
                     {
-                        float a = Mathf.PI * 0.5f + k * Mathf.PI / 5f;
-                        float r = k % 2 == 0 ? 0.03f : 0.013f;
-                        star.Add(new Vector2(Mathf.Cos(a) * r, Mathf.Sin(a) * r));
+                        var s = Group("Star" + k, pic, new Vector3((k - 1) * 0.04f, k == 1 ? 0.006f : -0.002f, 0));
+                        float r = k == 1 ? 0.022f : 0.017f; // meshes are saved by name: one per size
+                        MeshKit.Show("Star", s, MeshKit.Extrude($"HowTo_Star_{r * 1000:0}", Star(r), 0.005f), sun);
                     }
-                    MeshKit.Show("Star", pic, MeshKit.Extrude("HowTo_Star", star, 0.005f), sun);
                 }
                 Text3D("Text", card, steps[i], andika, 0.019f, UIColors.Ink, new Vector3(0, -0.05f, -0.0045f), new Vector2(0.15f, 0.05f));
             }
 
-            Text3D("Placeholder", panel, "(Placeholder: the real tutorial is coming soon.)", andika, 0.015f, UIColors.Muted,
-                new Vector3(0, -0.095f, -0.0005f), new Vector2(0.5f, 0.025f));
+            Text3D("Tip", panel, "Wrong card? A helper at the window will give you a hint!", andika, 0.017f, UIColors.Ink,
+                new Vector3(0, -0.095f, -0.0005f), new Vector2(0.56f, 0.028f));
 
             var back = BackButton(panel, new Vector2(0, -0.15f), new Vector2(0.2f, 0.075f));
             On(back, controller.OnBack);
             return panel;
         }
+
+        private static List<Vector2> Star(float radius)
+        {
+            var star = new List<Vector2>();
+            for (int k = 0; k < 10; k++)
+            {
+                float a = Mathf.PI * 0.5f + k * Mathf.PI / 5f;
+                float r = k % 2 == 0 ? radius : radius * 0.43f;
+                star.Add(new Vector2(Mathf.Cos(a) * r, Mathf.Sin(a) * r));
+            }
+            return star;
+        }
+
+        private static readonly Vector2[] CheckMark =
+        {
+            new(-0.6f, 0.05f), new(-0.15f, -0.5f), new(0.65f, 0.35f), new(0.45f, 0.52f), new(-0.15f, -0.15f), new(-0.42f, 0.22f),
+        };
     }
 }

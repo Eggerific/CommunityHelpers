@@ -216,6 +216,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardScript
   slotPull: {fileID: 0}
+  cardCategory: Teacher/Tool
   returnHomeDrop: 1
 --- !u!1001 &5644395585271353441
 PrefabInstance:

@@ -17,6 +17,7 @@ namespace CommunityHelpers.EditorTools
         public const string Suburban = "city-kit-suburban";
         public const string Furniture = "furniture-kit";
         public const string Nature = "nature-kit";
+        public const string Characters = "mini-characters"; // the people outside the window (animated)
 
         /// <summary>
         /// Yaw (degrees) that turns each kit's model so its front faces the container's +Z.
@@ -30,6 +31,7 @@ namespace CommunityHelpers.EditorTools
             { Suburban, 180f },
             { Furniture, 180f },
             { Nature, 180f },
+            { Characters, 0f },   // checked in a render 2026-11-17: the Mini Characters already face +Z
         };
 
         private static readonly Dictionary<string, float> KitScales = new();

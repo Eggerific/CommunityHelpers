@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: MiniCharacter_worker
+  m_Controller: {fileID: 9100000, guid: c286f8c409266ae49995ab9b71a59a6b, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: -5252816984213320552, guid: 50d748059285bbb4f81d4099ed37009f, type: 3}
+    m_OverrideClip: {fileID: -5252816984213320552, guid: b91c99cee91d0e142989209dbe2b5677, type: 3}
+  - m_OriginalClip: {fileID: -3419257869308726280, guid: 50d748059285bbb4f81d4099ed37009f, type: 3}
+    m_OverrideClip: {fileID: -3419257869308726280, guid: b91c99cee91d0e142989209dbe2b5677, type: 3}
+  - m_OriginalClip: {fileID: 4297623066254443295, guid: 50d748059285bbb4f81d4099ed37009f, type: 3}
+    m_OverrideClip: {fileID: 4297623066254443295, guid: b91c99cee91d0e142989209dbe2b5677, type: 3}
+  - m_OriginalClip: {fileID: -2473369329123925276, guid: 50d748059285bbb4f81d4099ed37009f, type: 3}
+    m_OverrideClip: {fileID: -2473369329123925276, guid: b91c99cee91d0e142989209dbe2b5677, type: 3}

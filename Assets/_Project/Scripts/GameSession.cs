@@ -7,10 +7,12 @@ namespace CommunityHelpers
     public static class GameSession
     {
         public enum GameMode { Full, Quick }
-        public enum Buddy { Fox, Bear, Owl, Bunny }
+
+        /// <summary>The helper hats Robo can wear (team call, Nov 17: "Dress up Robo" replaces the animal picker).</summary>
+        public enum RoboHat { None = -1, Firefighter, Police, MailCarrier, Doctor }
 
         public static GameMode Mode = GameMode.Full;
-        public static Buddy Animal = Buddy.Fox;
+        public static RoboHat Hat = RoboHat.None;
 
         /// <summary>Full game uses all 6 helpers; Quick play uses 3.</summary>
         public static int HelperCount => Mode == GameMode.Full ? 6 : 3;
